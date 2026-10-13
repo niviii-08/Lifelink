@@ -1,0 +1,22 @@
+# Blood Donation Eligibility
+
+To ensure the safety of both the donor and the recipient, blood donors must meet specific eligibility criteria.
+
+1. Age and Weight:
+- You must be between 18 and 65 years old.
+- You must weigh at least 50 kg (110 lbs).
+
+2. Health and Medical Conditions:
+- You must be in good general health and feel well on the day of donation.
+- Hemoglobin levels must be at least 12.5 g/dL.
+- You cannot donate if you have tested positive for HIV, Hepatitis B, or Hepatitis C.
+- Donors with diabetes can donate if their condition is controlled through diet or oral medications (insulin-dependent diabetics are generally deferred).
+
+3. Recent Activities:
+- Tattoos or piercings: You must wait 6 months after getting a tattoo or body piercing before donating blood.
+- Travel: Travel to areas endemic with malaria or Zika may require a deferral period of 3 to 12 months.
+- Surgeries: Major surgeries require a deferral of 6 to 12 months.
+
+4. Frequency:
+- Men can donate whole blood every 90 days (3 months).
+- Women can donate whole blood every 120 days (4 months).

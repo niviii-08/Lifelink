@@ -1,0 +1,29 @@
+# Emergency Blood Request Guidance
+
+In a medical emergency, rapid action is crucial to securing the right blood type. Follow these guidelines:
+
+1. Use LifeLink:
+Immediately log into the LifeLink application and navigate to the "Emergency" tab. Use the AI Smart Autofill or manually enter the patient's name, blood type needed, units required, hospital name, and urgency level. 
+
+2. Critical vs. Urgent:
+- Critical: Life-threatening situations requiring blood within 1-2 hours (e.g., severe accidents, massive hemorrhage).
+- Urgent: Blood required within 12-24 hours (e.g., upcoming major surgeries).
+
+3. Hospital Coordination:
+Always provide the exact hospital name and the specific ward or room number. Ensure that the hospital's blood bank is aware that external donors may be arriving to donate directed blood or replacement blood.
+
+# Blood Banks and Camps
+
+Blood Banks:
+Blood banks are specialized facilities that collect, separate, test, and store blood. Whole blood is typically separated into red blood cells, plasma, and platelets. 
+- Red blood cells are stored at 2-6 degrees Celsius for up to 42 days.
+- Platelets are stored at room temperature with continuous agitation and only last for 5 days.
+- Plasma can be frozen and stored for up to a year.
+
+Donation Camps:
+Blood donation camps are mobile drives organized by hospitals, NGOs, and community groups. 
+When attending a camp:
+- Ensure you have a good meal 2-3 hours prior to donating.
+- Hydrate well.
+- Carry a valid government-issued ID.
+LifeLink users can view upcoming camps in their vicinity using the "Camps" dashboard.

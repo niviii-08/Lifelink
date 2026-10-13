@@ -1,0 +1,23 @@
+# Blood Group Compatibility
+
+Blood compatibility is determined by the ABO and Rh blood group systems. Receiving incompatible blood can lead to severe and potentially fatal immune reactions.
+
+1. The ABO System:
+- Type A: Can donate to A, AB. Can receive from A, O.
+- Type B: Can donate to B, AB. Can receive from B, O.
+- Type AB: The "Universal Recipient" (for plasma, the rules are inverted). Can donate to AB only. Can receive from A, B, AB, O.
+- Type O: The "Universal Donor" (red blood cells). Can donate to A, B, AB, O. Can receive from O only.
+
+2. The Rh System (+ and -):
+- Rh-positive blood can receive both Rh-positive and Rh-negative blood.
+- Rh-negative blood should ideally only receive Rh-negative blood. 
+
+3. Exact Combinations:
+- O- can donate to everyone.
+- O+ can donate to O+, A+, B+, AB+.
+- A- can donate to A-, A+, AB-, AB+.
+- A+ can donate to A+, AB+.
+- B- can donate to B-, B+, AB-, AB+.
+- B+ can donate to B+, AB+.
+- AB- can donate to AB-, AB+.
+- AB+ can donate to AB+ only (but can receive from everyone).

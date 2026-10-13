@@ -1,0 +1,27 @@
+{
+  "name": "lifelink-app",
+  "version": "1.0.0",
+  "description": "LifeLink Blood Donation Platform with persistent SQLite backend.",
+  "main": "server.js",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "setup": "node setup_db.js",
+    "server": "node server.js",
+    "client": "npm run dev --prefix client",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "build": "npm run build --prefix client",
+    "start": "concurrently \"node server.js\" \".\\backend\\venv\\Scripts\\python -m uvicorn backend.main:app --port 8001\"",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "concurrently": "^10.0.5",
+    "dotenv": "^17.4.2",
+    "express": "^4.19.2",
+    "firebase-admin": "^14.3.0",
+    "http-proxy-middleware": "^4.2.0",
+    "nodemailer": "^10.0.12"
+  }
+}

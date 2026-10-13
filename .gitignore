@@ -1,0 +1,43 @@
+# Secrets — never commit real environment files or credentials
+.env
+.env.local
+.env.*.local
+*.json.key
+*firebase-adminsdk*.json
+firebase-adminsdk.json
+
+# Local SQLite database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Python artifacts & caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/__pycache__/
+backend/venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+
+# Dependencies
+node_modules/
+client/node_modules/
+
+# Build output
+client/dist/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor/OS
+.DS_Store
+.vscode/
+.idea/

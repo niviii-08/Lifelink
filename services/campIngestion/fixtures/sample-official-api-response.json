@@ -1,0 +1,45 @@
+{
+  "_disclaimer": "SAMPLE/DEMO FIXTURE — this file simulates the shape of a real government or NGO blood-camp API response. It is not connected to any real API and contains no real organizations, people, or events. Replace services/campIngestion/adapters/sampleApiAdapter.js with a real HTTP call to a verified, credentialed endpoint before using this in production.",
+  "meta": {
+    "sourceUrl": "https://example-health-dept.gov.in/api/v1/blood-camps",
+    "generatedAt": "2026-08-01T00:00:00Z"
+  },
+  "camps": [
+    {
+      "title": "Regional Health Dept. Mega Camp",
+      "organizer": "Tamil Nadu State Health Department (sample)",
+      "venue": "District Collectorate Grounds, Gandhipuram",
+      "city": "Coimbatore",
+      "state": "Tamil Nadu",
+      "latitude": 11.0225,
+      "longitude": 76.9691,
+      "date": "2026-09-15",
+      "startTime": "10:00 AM",
+      "endTime": "05:00 PM",
+      "contactPhone": "+91 80000 12345",
+      "contactEmail": "camps@example-health-dept.gov.in",
+      "registrationUrl": "https://example-health-dept.gov.in/register/sample-001",
+      "capacity": 250,
+      "lastUpdated": "2026-08-01T00:00:00Z",
+      "sourceUrl": "https://example-health-dept.gov.in/api/v1/blood-camps/sample-001"
+    },
+    {
+      "title": "District Hospital Quarterly Drive",
+      "organizer": "Example District Hospital Network (sample)",
+      "venue": "Example District Hospital, Peelamedu Annex",
+      "city": "Coimbatore",
+      "state": "Tamil Nadu",
+      "latitude": 11.031,
+      "longitude": 77.001,
+      "date": "2026-09-28",
+      "startTime": "09:00 AM",
+      "endTime": "01:00 PM",
+      "contactPhone": null,
+      "contactEmail": "outreach@example-districthospital.gov.in",
+      "registrationUrl": "https://example-health-dept.gov.in/register/sample-002",
+      "capacity": 100,
+      "lastUpdated": "2026-08-01T00:00:00Z",
+      "sourceUrl": "https://example-health-dept.gov.in/api/v1/blood-camps/sample-002"
+    }
+  ]
+}

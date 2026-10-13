@@ -1,0 +1,35 @@
+{
+  "_disclaimer": "SAMPLE/DEMO FIXTURE — this file simulates already-extracted, structured fields from a hypothetical permitted community-events listing page. It is not connected to any real website and contains no real organizations, people, or events. Replace services/campIngestion/adapters/sampleScrapeAdapter.js's fixture read with a real, robots.txt-permitted HTTP fetch + HTML parse before using this in production, and only after confirming the target's Terms of Service allow automated collection.",
+  "camps": [
+    {
+      "title": "City Rotary Blood Drive (Web Listing)",
+      "organizer": "Rotary Club Coimbatore Central (sample)",
+      "venue": "Rotary Bhavan, Peelamedu",
+      "city": "Coimbatore",
+      "state": "Tamil Nadu",
+      "latitude": 11.029,
+      "longitude": 77.005,
+      "date": "2026-09-20",
+      "startTime": "10:00 AM",
+      "endTime": "04:00 PM",
+      "registrationUrl": "https://example-events.org/listings/sample-camp-002",
+      "capacity": 120,
+      "sourceUrl": "https://example-events.org/listings/sample-camp-002"
+    },
+    {
+      "title": "Community Youth Blood Camp",
+      "organizer": "Example Youth Collective (sample)",
+      "venue": "Example Community Hall, Sundarapuram",
+      "city": "Coimbatore",
+      "state": "Tamil Nadu",
+      "latitude": 10.975,
+      "longitude": 76.968,
+      "date": "2026-10-02",
+      "startTime": "09:30 AM",
+      "endTime": "02:30 PM",
+      "registrationUrl": "https://example-events.org/listings/sample-camp-003",
+      "capacity": 60,
+      "sourceUrl": "https://example-events.org/listings/sample-camp-003"
+    }
+  ]
+}

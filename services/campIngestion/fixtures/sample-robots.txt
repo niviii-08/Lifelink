@@ -1,0 +1,9 @@
+# SAMPLE/DEMO FIXTURE — represents a hypothetical site's robots.txt used to
+# demonstrate the ingestion pipeline's compliance gate. Not a real site.
+User-agent: *
+Disallow: /admin/
+Disallow: /account/
+Disallow: /api/private/
+Allow: /listings/
+
+Sitemap: https://example-events.org/sitemap.xml

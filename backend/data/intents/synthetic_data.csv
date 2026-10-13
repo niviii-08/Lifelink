@@ -1,0 +1,11 @@
+text,intent
+"I urgently need 2 units of O positive blood at Apollo Hospital.",emergency_request
+"Looking for B- blood in Chennai.",blood_search
+"Are there any blood donation camps near me?",camp_info
+"Can I donate blood if I had a tattoo recently?",eligibility_question
+"Thank you for the information.",general
+"We need A+ blood for a surgery tomorrow morning.",emergency_request
+"Where can I find AB negative blood?",blood_search
+"How old do I need to be to donate?",eligibility_question
+"Who is the admin of this platform?",general
+"Please help, critical need for O- blood at GH.",emergency_request

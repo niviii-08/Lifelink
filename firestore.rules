@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Users can read and write their own profile
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Emergencies: Authenticated users can read all.
+    // (In a real scenario, we might restrict writes to Hospitals or Patients only, 
+    // but we allow authenticated creation for testing the workflow)
+    match /emergencies/{emergencyId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && resource.data.hospital_id == request.auth.uid;
+      
+      match /history/{historyId} {
+        allow read, write: if isAuthenticated();
+      }
+      match /matches/{matchId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // Blood inventory is public for searching, but only editable by the specific bank or admin
+    match /blood_inventory/{inventoryId} {
+      allow read: if true;
+      allow write: if isAuthenticated() && resource.data.blood_bank_id == request.auth.uid;
+    }
+
+    // Camps are publicly readable. Writable by the organizer (or admin).
+    match /camps/{campId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+      
+      match /registrations/{registrationId} {
+        allow read, write: if isAuthenticated() && request.auth.uid == resource.data.donor_id;
+      }
+    }
+  }
+}

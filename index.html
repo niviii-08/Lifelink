@@ -1,0 +1,1967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="LifeLink — Real-time blood donation platform connecting donors, patients, hospitals and blood banks.">
+<title>LifeLink — Save Lives, One Drop at a Time</title>
+<script>
+  window.onerror = function(message, source, lineno, colno, error) {
+    alert("LifeLink JS Error: " + message + "\nLine: " + lineno + "\nSource: " + source.split('/').pop());
+  };
+</script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🩸</text></svg>">
+</head>
+<body>
+
+<!-- ===================== TOAST ===================== -->
+<div id="toast-container"></div>
+
+<!-- ===================== CHATBOT ===================== -->
+<button id="chatbot-btn" onclick="toggleChat()" title="Ask LifeLink AI">🩸</button>
+<div id="chat-window">
+  <div class="chat-hdr">
+    <div class="chat-av">🤖</div>
+    <div>
+      <div style="font-size:13px;font-weight:700">LifeLink AI</div>
+      <div style="font-size:11px;opacity:.8">Your donation assistant</div>
+    </div>
+    <div class="chat-online"></div>
+    <button onclick="toggleChat()" style="margin-left:8px;background:none;border:none;color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;line-height:1">✕</button>
+  </div>
+  <div class="chat-msgs" id="chat-msgs">
+    <div class="msg msg-bot">Hi! I'm your LifeLink assistant. I can help with eligibility, nearby blood banks, and emergencies. 💉</div>
+  </div>
+  <div class="chat-qr">
+    <button class="chat-qr-btn" onclick="quickReply('Am I eligible to donate?')">Eligibility?</button>
+    <button class="chat-qr-btn" onclick="quickReply('Find blood banks near me')">Nearby banks</button>
+    <button class="chat-qr-btn" onclick="quickReply('How does donation work?')">Process</button>
+    <button class="chat-qr-btn" onclick="quickReply('How to handle an emergency?')">Emergency</button>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-in" id="chat-input" placeholder="Ask anything..." onkeypress="if(event.key==='Enter')sendChat()">
+    <button class="chat-send" onclick="sendChat()">Send</button>
+  </div>
+</div>
+
+<!-- ===================== MODALS ===================== -->
+<!-- OTP Modal -->
+<div class="modal-bg" id="otp-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('otp-modal')">✕</button>
+    <div style="text-align:center;margin-bottom:1rem;font-size:2rem">📱</div>
+    <div class="modal-title" style="text-align:center">Verify Your Phone</div>
+    <div class="modal-sub" style="text-align:center">Enter the 6-digit OTP sent to your mobile number</div>
+    <div class="form-group">
+      <input class="form-input" id="otp-input" placeholder="Enter 6-digit OTP" maxlength="6" style="text-align:center;font-size:1.4rem;letter-spacing:8px;font-weight:800">
+    </div>
+    <button class="btn btn-red btn-full" onclick="verifyOTP()" style="padding:12px">Verify &amp; Create Account</button>
+    <div style="text-align:center;margin-top:1rem;font-size:13px;color:var(--gr)">Didn't receive? <a href="#" onclick="toast('info','📱 OTP Resent','New OTP sent to your mobile')" style="color:var(--red);font-weight:600">Resend OTP</a></div>
+  </div>
+</div>
+
+<!-- Emergency Request Modal -->
+<div class="modal-bg" id="emerg-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('emerg-modal')">✕</button>
+    <div class="modal-title">🚨 Create Emergency Request</div>
+    <div class="modal-sub">Broadcast an urgent blood request to all nearby donors instantly</div>
+    <div class="form-group">
+      <label class="form-label">Patient Name</label>
+      <input class="form-input" id="emerg-name" placeholder="e.g. Sanjay Kumar">
+    </div>
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Blood Type Needed</label>
+        <select class="form-input" id="emerg-blood">
+          <option value="">Select type</option>
+          <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+          <option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Units Needed</label>
+        <input class="form-input" id="emerg-units" type="number" min="1" max="20" placeholder="e.g. 3">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Urgency Level</label>
+      <select class="form-input" id="emerg-urg">
+        <option value="">Select urgency</option>
+        <option>Critical</option><option>Urgent</option><option>Normal</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Hospital / Location</label>
+      <input class="form-input" id="emerg-loc" placeholder="Apollo Hospital, RS Puram, Coimbatore">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Additional Notes</label>
+      <textarea class="form-input" rows="2" placeholder="Patient details, ward number, contact person..."></textarea>
+    </div>
+    <button class="btn btn-emergency btn-full" onclick="submitEmergencyRequest()" style="justify-content:center">🚨 Broadcast Emergency Request</button>
+  </div>
+</div>
+
+<!-- Alert Dispatch Logs Modal -->
+<div class="modal-bg" id="admin-logs-modal">
+  <div class="modal" style="max-width:550px">
+    <button class="modal-close" onclick="closeModal('admin-logs-modal')">✕</button>
+    <div class="modal-title">📋 Alert Dispatch Logs</div>
+    <div class="modal-sub" id="admin-logs-subtitle">Real-time matching donor alerts status</div>
+    <div style="margin-top:1.25rem;max-height:350px;overflow-y:auto">
+      <table class="tbl" style="font-size:13px">
+        <thead>
+          <tr><th>Matched Donor</th><th>Blood Type</th><th>Proximity</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody id="admin-logs-tbody">
+          <!-- Populated dynamically -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Passport ID Modal -->
+<div class="modal-bg" id="passport-modal">
+  <div class="modal" style="max-width:440px;background:none;padding:0;border:none">
+    <button class="modal-close" onclick="closeModal('passport-modal')" style="color:#fff;z-index:10;top:1rem;right:1rem">✕</button>
+    <div class="passport">
+      <div class="pp-bg">🩸</div>
+      <div class="pp-hdr">
+        <div class="pp-av" id="pp-avatar">AK</div>
+        <div>
+          <div class="pp-name" id="pp-name">Arjun Kumar</div>
+          <div class="pp-id" id="pp-id">LL-2026-CBE-0842</div>
+        </div>
+      </div>
+      <div class="pp-grid">
+        <div class="pp-field">
+          <div class="pp-lbl">Blood Type</div>
+          <div class="pp-val big" id="pp-blood" style="color:#f87171">O+</div>
+        </div>
+        <div class="pp-field">
+          <div class="pp-lbl">Total Donations</div>
+          <div class="pp-val big" id="pp-donations" style="color:#f87171">12</div>
+        </div>
+        <div class="pp-field">
+          <div class="pp-lbl">Role Status</div>
+          <div class="pp-val" id="pp-status" style="margin-top:8px;color:#4ade80">Active Donor</div>
+        </div>
+      </div>
+      <div class="qr-area">
+        <div class="qr-box" id="pp-qr">
+          <!-- Dynamically generated QR blocks -->
+        </div>
+        <div style="font-size:12px;opacity:.85;line-height:1.4">
+          <strong>LifeLink Verified Identity Profile</strong><br>
+          Scan to verify credentials, medical history clearance, and eligibility status.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit User Modal -->
+<div class="modal-bg" id="admin-user-modal">
+  <div class="modal" style="max-width:460px">
+    <button class="modal-close" onclick="closeModal('admin-user-modal')">✕</button>
+    <div class="modal-title" id="admin-user-modal-title">👥 Add New User</div>
+    <div class="modal-sub" id="admin-user-modal-subtitle">Register a new system account with permissions</div>
+    <input type="hidden" id="admin-user-id">
+    
+    <div class="form-group">
+      <label class="form-label">Full Name</label>
+      <input class="form-input" id="admin-user-name-input" placeholder="e.g. Vikram Malhotra">
+    </div>
+    
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Role</label>
+        <select class="form-input" id="admin-user-role-input">
+          <option>Donor</option>
+          <option>Hospital</option>
+          <option>Blood Bank</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Blood Type</label>
+        <select class="form-input" id="admin-user-blood-input">
+          <option>A+</option><option>A-</option>
+          <option>B+</option><option>B-</option>
+          <option>O+</option><option>O-</option>
+          <option>AB+</option><option>AB-</option>
+          <option>Multiple</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Location</label>
+        <input class="form-input" id="admin-user-location-input" placeholder="e.g. Coimbatore">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Activity Status</label>
+        <select class="form-input" id="admin-user-status-input">
+          <option>Active</option>
+          <option>Verified</option>
+          <option>On Duty</option>
+          <option>Pending</option>
+        </select>
+      </div>
+    </div>
+    
+    <button class="btn btn-red btn-full" id="admin-user-submit-btn" onclick="submitAdminUser()" style="justify-content:center;margin-top:0.5rem">Save Account</button>
+  </div>
+</div>
+
+<!-- Donation Activity Record Modal -->
+<div class="modal-bg" id="donation-record-modal">
+  <div class="modal" style="max-width:480px;text-align:center;padding:2rem">
+    <button class="modal-close" onclick="closeModal('donation-record-modal')">✕</button>
+    <div style="font-size:3rem;margin-bottom:0.5rem">🏆</div>
+    <div class="modal-title" style="margin:0 0 4px 0">Donation Activity Record</div>
+    <div class="modal-sub" id="dr-id" style="text-transform:uppercase;letter-spacing:1px;font-size:11px;font-weight:700">RECORD #DR-2026-8472</div>
+    
+    <div class="card" style="background:var(--gr3);margin-top:1.5rem;padding:1.5rem;text-align:left;border-left:4px solid var(--green)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;color:var(--gr);font-weight:700">Donor Name</div>
+          <strong style="font-size:16px" id="dr-donor">Arjun Kumar</strong>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:10px;text-transform:uppercase;color:var(--gr);font-weight:700">Blood Type</div>
+          <strong style="font-size:18px;color:var(--red)" id="dr-blood">O+</strong>
+        </div>
+      </div>
+      
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;text-transform:uppercase;color:var(--gr);font-weight:700">Affiliated Center</div>
+        <span style="font-size:13px;font-weight:600" id="dr-hospital">Apollo Hospital</span>
+      </div>
+      
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;text-transform:uppercase;color:var(--gr);font-weight:700">Activity State</div>
+        <span class="badge b-ok" id="dr-status">Completed</span>
+      </div>
+      
+      <div>
+        <div style="font-size:10px;text-transform:uppercase;color:var(--gr);font-weight:700">Clinical Logs</div>
+        <p style="font-size:12px;color:var(--gr2);margin:4px 0 0 0;line-height:1.4" id="dr-details">Regular voluntary donation. 450ml drawn. Vitals normal.</p>
+      </div>
+    </div>
+    
+    <button class="btn btn-red btn-full" onclick="closeModal('donation-record-modal')" style="justify-content:center;margin-top:1.5rem">Close Record</button>
+  </div>
+</div>
+
+<!-- Hospital Quota & Details Modal -->
+<div class="modal-bg" id="hospital-quota-modal">
+  <div class="modal" style="max-width:480px">
+    <button class="modal-close" onclick="closeModal('hospital-quota-modal')">✕</button>
+    <div class="modal-title" id="hq-name">🏥 Apollo Hospitals</div>
+    <div class="modal-sub" id="hq-location">Location: RS Puram</div>
+    
+    <div class="card" style="margin-top:1.25rem;padding:1.25rem">
+      <div style="font-size:11px;font-weight:700;color:var(--gr);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Monthly Blood Request Quota</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-weight:600">
+        <span id="hq-quota-text">20 / 30 Units used</span>
+        <span style="color:var(--red)" id="hq-percent">66% Used</span>
+      </div>
+      <div class="pbar" style="height:12px;border-radius:6px;overflow:hidden"><div class="pbar-f p-r" id="hq-bar" style="width:66%"></div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <div class="card" style="padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--gr);text-transform:uppercase">Active Emergencies</div>
+        <strong style="font-size:1.5rem;color:var(--red);margin-top:4px;display:block" id="hq-emerg">1</strong>
+      </div>
+      <div class="card" style="padding:12px;text-align:center">
+        <div style="font-size:10px;color:var(--gr);text-transform:uppercase">Compliance Status</div>
+        <span class="badge b-ok" id="hq-status" style="margin-top:8px;display:inline-block">Verified Partner</span>
+      </div>
+    </div>
+    
+    <div style="display:flex;gap:10px;margin-top:1.5rem">
+      <button class="btn btn-gray" style="flex:1;justify-content:center" onclick="closeModal('hospital-quota-modal')">Close Audit</button>
+      <button class="btn btn-red" id="hq-increase-btn" style="flex:1.2;justify-content:center" onclick="promptIncreaseQuota()">Increase Quota</button>
+    </div>
+  </div>
+</div>
+
+<!-- Register Hospital Partner Modal -->
+<div class="modal-bg" id="hospital-partner-modal">
+  <div class="modal" style="max-width:440px">
+    <button class="modal-close" onclick="closeModal('hospital-partner-modal')">✕</button>
+    <div class="modal-title">🏥 Verify Hospital Partner</div>
+    <div class="modal-sub">Approve and configure institutional portal credentials</div>
+    
+    <div class="form-group" style="margin-top:1.25rem">
+      <label class="form-label">Hospital Name</label>
+      <input class="form-input" id="hp-name-input" placeholder="e.g. KG Hospital & PG Inst.">
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Location / Address</label>
+      <input class="form-input" id="hp-location-input" placeholder="e.g. Coimbatore Center">
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Initial Monthly Quota Limit</label>
+      <input class="form-input" type="number" id="hp-quota-input" value="30">
+    </div>
+    
+    <button class="btn btn-red btn-full" onclick="submitHospitalPartner()" style="justify-content:center;margin-top:0.5rem">Verify Hospital Partner</button>
+  </div>
+</div>
+
+<!-- Blood Bank Stock Breakdown Modal -->
+<div class="modal-bg" id="bloodbank-audit-modal">
+  <div class="modal" style="max-width:520px">
+    <button class="modal-close" onclick="closeModal('bloodbank-audit-modal')">✕</button>
+    <div class="modal-title" id="bba-name">🩸 City Blood Bank</div>
+    <div class="modal-sub" id="bba-address">📍 Race Course Road, Coimbatore</div>
+    
+    <div class="card" style="margin-top:1.25rem;padding:1.25rem">
+      <div style="font-size:11px;font-weight:700;color:var(--gr);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Inventory Stock Levels by Blood Group</div>
+      
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px" id="bba-grid">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+    
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <div class="card" style="padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--gr);text-transform:uppercase">Active Transfers</div>
+        <strong id="bba-transfers" style="font-size:1.25rem;color:var(--tx);margin-top:4px;display:block">2 in progress</strong>
+      </div>
+      <div class="card" style="padding:10px;text-align:center">
+        <div style="font-size:10px;color:var(--gr);text-transform:uppercase">Connection State</div>
+        <span class="badge b-ok" id="bba-connection" style="margin-top:6px;display:inline-block">Connected</span>
+      </div>
+    </div>
+    
+    <button class="btn btn-red btn-full" onclick="closeModal('bloodbank-audit-modal')" style="justify-content:center;margin-top:1.5rem">Close Stock Audit</button>
+  </div>
+</div>
+
+<!-- Add Camp/Drive Modal -->
+<div class="modal-bg" id="camp-modal">
+  <div class="modal" style="max-width:440px">
+    <button class="modal-close" onclick="closeModal('camp-modal')">✕</button>
+    <div class="modal-title">🏕 Schedule Donation Camp</div>
+    <div class="modal-sub">Create a new localized donation drive on the platform</div>
+    
+    <div class="form-group" style="margin-top:1.25rem">
+      <label class="form-label">Camp Title</label>
+      <input class="form-input" id="camp-title-input" placeholder="e.g. Government Arts College Camp">
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Scheduled Date</label>
+      <input class="form-input" type="date" id="camp-date-input">
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Location / Campus</label>
+      <input class="form-input" id="camp-location-input" placeholder="e.g. Arts College Campus">
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Registrations Limit</label>
+      <input class="form-input" type="number" id="camp-limit-input" value="150">
+    </div>
+    
+    <button class="btn btn-red btn-full" onclick="submitCampDrive()" style="justify-content:center;margin-top:0.5rem">Schedule Drive</button>
+  </div>
+</div>
+
+<!-- Request Profile Edit Modal -->
+<div class="modal-bg" id="profile-edit-modal">
+  <div class="modal" style="max-width:480px">
+    <button class="modal-close" onclick="closeModal('profile-edit-modal')">✕</button>
+    <div class="modal-title">✏️ Request Profile Update</div>
+    <div class="modal-sub">Submit changes to your profile for admin review and security verification.</div>
+    
+    <input type="hidden" id="pe-user-id">
+    
+    <div class="form-group" style="margin-top:1.5rem">
+      <label class="form-label">Name / Entity Title</label>
+      <input class="form-input" id="pe-name-input" placeholder="e.g. Arjun Kumar">
+    </div>
+    
+    <div class="form-group">
+      <label class="form-label">Location / Address</label>
+      <input class="form-input" id="pe-location-input" placeholder="e.g. Coimbatore, TN">
+    </div>
+    
+    <div class="form-group" id="pe-blood-group-container">
+      <label class="form-label">Blood Type</label>
+      <select class="form-input" id="pe-blood-input">
+        <option>O+</option><option>O-</option><option>A+</option><option>A-</option>
+        <option>B+</option><option>B-</option><option>AB+</option><option>AB-</option>
+        <option>Multiple</option>
+      </select>
+    </div>
+    
+    <!-- Info warning block -->
+    <div class="card" style="background:var(--pk);border:1px solid var(--pk2);padding:12px;margin-top:1.25rem;border-left:4px solid var(--or);border-radius:var(--r2)">
+      <div style="font-size:11px;color:var(--tx);line-height:1.4">
+        <strong>⚠️ Security Auditing Active</strong><br>
+        Your verification status will change to <strong>"Pending Verification"</strong>. Our platform administrator will review these credentials before they are merged and made public.
+      </div>
+    </div>
+    
+    <button class="btn btn-red btn-full" onclick="submitProfileRequest()" style="justify-content:center;margin-top:1.25rem">Submit Update Request</button>
+  </div>
+</div>
+
+<!-- Admin Verification Audit Modal -->
+<div class="modal-bg" id="admin-verification-modal">
+  <div class="modal" style="max-width:540px">
+    <button class="modal-close" onclick="closeModal('admin-verification-modal')">✕</button>
+    <div class="modal-title">🛡️ Security Verification Audit</div>
+    <div class="modal-sub" id="av-subtitle">Audit profile changes requested by Arjun Kumar</div>
+    
+    <input type="hidden" id="av-user-id">
+    
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-top:1.5rem">
+      <!-- BEFORE Card -->
+      <div class="card" style="background:var(--gr3);opacity:0.85">
+        <div style="font-size:10px;text-transform:uppercase;color:var(--gr);font-weight:700;margin-bottom:8px">Current Profile</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:10px;color:var(--gr)">Name</div>
+            <strong id="av-name-before" style="font-size:13px;text-decoration:line-through;color:var(--gr2)">Arjun Kumar</strong>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--gr)">Location</div>
+            <span id="av-location-before" style="font-size:13px;text-decoration:line-through;color:var(--gr2)">Coimbatore</span>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--gr)">Blood Group</div>
+            <span id="av-blood-before" style="font-size:13px;text-decoration:line-through;color:var(--gr2)">O+</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- AFTER Card (Changes) -->
+      <div class="card" style="border:1.5px solid var(--or);background:rgba(245,158,11,0.04)">
+        <div style="font-size:10px;text-transform:uppercase;color:var(--or);font-weight:700;margin-bottom:8px">Requested Changes</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:10px;color:var(--gr)">Name</div>
+            <strong id="av-name-after" style="font-size:13px;color:var(--tx)">Arjun Kumar Updated</strong>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--gr)">Location</div>
+            <span id="av-location-after" style="font-size:13px;color:var(--tx)">Race Course, Coimbatore</span>
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--gr)">Blood Group</div>
+            <span id="av-blood-after" style="font-size:13px;color:var(--tx)">O+</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:12px;margin-top:1.5rem">
+      <button class="btn btn-outline" onclick="rejectProfileRequest()" style="justify-content:center">Reject Changes</button>
+      <button class="btn btn-red" onclick="approveProfileRequest()" style="justify-content:center">✅ Approve &amp; Verify</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Onboarding Account Verification Modal -->
+<div class="modal-bg" id="admin-onboarding-modal">
+  <div class="modal" style="max-width:480px">
+    <button class="modal-close" onclick="closeModal('admin-onboarding-modal')">✕</button>
+    <div class="modal-title">🛡️ Onboarding Security Audit</div>
+    <div class="modal-sub">Verify identity credentials for newly registered platform user</div>
+    
+    <input type="hidden" id="ao-user-id">
+    
+    <div class="card" style="margin-top:1.5rem;background:var(--gr3);border:1.5px solid var(--gr4)">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;color:var(--gr);font-weight:700">Account Type / Role</div>
+          <strong id="ao-role" style="font-size:14px;color:var(--tx)">Donor</strong>
+        </div>
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;color:var(--gr);font-weight:700">Registrant Name</div>
+          <strong id="ao-name" style="font-size:14px;color:var(--tx)">Arjun Kumar</strong>
+        </div>
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;color:var(--gr);font-weight:700">Registrant Location</div>
+          <span id="ao-location" style="font-size:13px;color:var(--tx)">Coimbatore</span>
+        </div>
+        <div id="ao-blood-container">
+          <div style="font-size:10px;text-transform:uppercase;color:var(--gr);font-weight:700">Blood Group</div>
+          <span id="ao-blood" style="font-size:13px;font-weight:800;color:var(--red)">O+</span>
+        </div>
+        <div>
+          <div style="font-size:10px;text-transform:uppercase;color:var(--gr);font-weight:700">Digital Passport ID</div>
+          <span id="ao-passport" style="font-size:12px;font-family:monospace;color:var(--gr2)">LL-2026-CBE-0842</span>
+        </div>
+        <div id="ao-license-container" style="display:none">
+          <div style="font-size:10px;text-transform:uppercase;color:var(--gr);font-weight:700">Medical License / Reg No</div>
+          <strong id="ao-license" style="font-size:13px;color:var(--tx)">HOSP-2026-CBE-9842</strong>
+        </div>
+        <div id="ao-doc-container" style="display:none">
+          <div style="font-size:10px;text-transform:uppercase;color:var(--gr);font-weight:700">Accreditation Document</div>
+          <a id="ao-doc-link" href="#" target="_blank" style="font-size:12px;color:var(--red);text-decoration:underline;font-weight:600;display:flex;align-items:center;gap:6px;margin-top:2px">📄 view_license_acc.pdf</a>
+        </div>
+      </div>
+    </div>
+    
+    <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:12px;margin-top:1.5rem">
+      <button class="btn btn-outline" onclick="denyOnboardingRequest()" style="justify-content:center">Deny Access</button>
+      <button class="btn btn-red" onclick="approveOnboardingRequest()" style="justify-content:center">✅ Approve &amp; Activate</button>
+    </div>
+  </div>
+</div>
+
+<!-- Request Blood Transfer Modal -->
+<div class="modal-bg" id="transfer-request-modal">
+  <div class="modal" style="max-width:400px; border-top:5px solid var(--red)">
+    <button class="modal-close" onclick="closeModal('transfer-request-modal')">✕</button>
+    <div class="modal-title">🔄 Request Blood Stock Transfer</div>
+    <div class="modal-sub">Ask another blood bank or facility to transfer blood stock to your inventory</div>
+    
+    <div class="form-group">
+      <label class="form-label">Target Facility (Supplier)</label>
+      <select class="form-input" id="tr-supplier-select">
+        <!-- Loaded dynamically from JS -->
+      </select>
+    </div>
+    
+    <div class="form-grid-2">
+      <div class="form-group">
+        <label class="form-label">Blood Group</label>
+        <select class="form-input" id="tr-blood-select">
+          <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+          <option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Units Needed</label>
+        <input type="number" class="form-input" id="tr-units-input" value="5" min="1">
+      </div>
+    </div>
+    
+    <button class="btn btn-red btn-full" style="margin-top:1.5rem" onclick="submitTransferRequest()">Submit Transfer Request</button>
+  </div>
+</div>
+
+<!-- ===================== NAVIGATION ===================== -->
+<nav class="nav">
+  <div class="nav-logo" onclick="showPage('home')">
+    <div class="logo-drop"><span>L</span></div>
+    LifeLink
+    <span class="pulse-dot"></span>
+  </div>
+  <ul class="nav-links">
+    <li><a data-page="home" onclick="showPage('home')" href="#">Home</a></li>
+    <li><a data-page="emergency" onclick="showPage('emergency')" href="#">Emergency</a></li>
+    <li><a data-page="find-blood" onclick="showPage('find-blood')" href="#">Find Blood</a></li>
+    <li><a data-page="map" onclick="showPage('map')" href="#">Live Map</a></li>
+    <li><a data-page="ai-match" onclick="showPage('ai-match')" href="#">AI Match</a></li>
+    <li><a data-page="camps" onclick="showPage('camps')" href="#">Camps</a></li>
+    <li id="nav-admin-li" style="display: none;"><a data-page="dashboard" onclick="showPage('dashboard')" href="#">Admin</a></li>
+  </ul>
+  <div class="nav-actions">
+    <div id="nav-auth-container" style="display:inline-flex;gap:10px">
+      <button class="btn btn-outline" onclick="showPage('auth')">Sign In / Register</button>
+    </div>
+    <button class="btn btn-red" onclick="triggerSOS()">🚨 SOS</button>
+    <button id="menu-toggle-btn" class="btn btn-gray btn-sm" onclick="toggleMobileMenu()" style="display:none;font-size:18px;padding:6px 10px">☰</button>
+  </div>
+</nav>
+
+<!-- Mobile Menu Overlay -->
+<div id="mobile-menu" class="mobile-menu-overlay">
+  <div class="mobile-menu-drawer">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:1rem 2rem;border-bottom:1px solid var(--gr4);background:#fff">
+      <div class="nav-logo" onclick="showPage('home')">
+        <div class="logo-drop"><span>L</span></div>
+        LifeLink
+      </div>
+      <button onclick="toggleMobileMenu()" style="background:none;border:none;font-size:24px;color:var(--gr);cursor:pointer">✕</button>
+    </div>
+    <ul class="mobile-menu-links">
+      <li><a data-page="home" onclick="showPage('home')" href="#">Home</a></li>
+      <li><a data-page="emergency" onclick="showPage('emergency')" href="#">Emergency</a></li>
+      <li><a data-page="find-blood" onclick="showPage('find-blood')" href="#">Find Blood</a></li>
+      <li><a data-page="map" onclick="showPage('map')" href="#">Live Map</a></li>
+      <li><a data-page="ai-match" onclick="showPage('ai-match')" href="#">AI Match</a></li>
+      <li><a data-page="camps" onclick="showPage('camps')" href="#">Camps</a></li>
+      <li id="mobile-admin-li" style="display: none;"><a data-page="dashboard" onclick="showPage('dashboard')" href="#">Admin</a></li>
+      <li id="mobile-menu-auth-li"><a onclick="showPage('auth')" href="#">Sign In / Register</a></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===================== HOME PAGE ===================== -->
+<div class="page active" id="home">
+  <!-- HERO -->
+  <div class="hero" style="display:flex;gap:2rem">
+    <div class="hero-circles">
+      <div class="hcircle hc1"></div>
+      <div class="hcircle hc2"></div>
+      <div class="hcircle hc3"></div>
+    </div>
+    <div class="hero-content">
+      <div class="hero-badge">🩸 Live Emergency Network Active</div>
+      <h1>Every Drop<br>Saves <span>A Life</span></h1>
+      <p>LifeLink connects blood donors with patients in real-time. Join 85,000+ heroes who've already saved lives. Be the reason someone gets a tomorrow.</p>
+      <div class="hero-btns">
+        <button class="btn-emergency" onclick="showPage('emergency')">🚨 Emergency Request</button>
+        <button class="btn btn-dark btn-lg" onclick="showPage('auth')">💉 Become a Donor</button>
+      </div>
+      <div class="hero-stats">
+        <div>
+          <div class="hstat-num" data-count="14800" data-suffix="+">0+</div>
+          <div class="hstat-lbl">Lives Saved</div>
+        </div>
+        <div>
+          <div class="hstat-num" data-count="85421">0</div>
+          <div class="hstat-lbl">Active Donors</div>
+        </div>
+        <div>
+          <div class="hstat-num" data-count="342">0</div>
+          <div class="hstat-lbl">Hospitals</div>
+        </div>
+        <div>
+          <div class="hstat-num" data-count="48">0</div>
+          <div class="hstat-lbl">Cities</div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="blood-drop">
+        <div class="bd-ring"></div>
+        <div class="bd-shape"></div>
+        <div class="bd-text">
+          <div class="bd-type">O+</div>
+          <div class="bd-sub">Universal Donor</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS STRIP -->
+  <div class="stats-strip">
+    <div><div class="ss-num">4.7M+</div><div class="ss-lbl">Donations Made</div></div>
+    <div><div class="ss-num">847</div><div class="ss-lbl">Active Requests</div></div>
+    <div><div class="ss-num">98.2%</div><div class="ss-lbl">Match Success Rate</div></div>
+    <div><div class="ss-num">8 min</div><div class="ss-lbl">Avg Response Time</div></div>
+  </div>
+
+  <!-- ACTIVE EMERGENCIES TEASER -->
+  <div style="background:linear-gradient(135deg,#fff5f5,var(--pk));border-top:4px solid var(--red);padding:3rem 2rem">
+    <div style="max-width:1100px;margin:0 auto">
+      <div style="background:linear-gradient(135deg,var(--rl),var(--rd));border-radius:var(--r);padding:1.5rem 2rem;display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;color:#fff;flex-wrap:wrap;gap:1rem">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="width:48px;height:48px;background:rgba(255,255,255,.18);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;animation:pulsate 1.5s infinite">🚨</div>
+          <div>
+            <div style="font-size:1rem;font-weight:700">3 Critical Emergencies Active Near You</div>
+            <div style="font-size:13px;opacity:.85">Your response can save a life in the next few minutes</div>
+          </div>
+        </div>
+        <button class="btn" style="background:rgba(255,255,255,.15);color:#fff;border:1.5px solid rgba(255,255,255,.3)" onclick="showPage('emergency')">View All Requests →</button>
+      </div>
+      <div id="home-emergencies-container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- BLOOD AVAILABILITY -->
+  <div class="section">
+    <div class="section-title">Blood <span class="accent">Availability</span></div>
+    <div class="section-sub">Real-time inventory across verified blood banks in your city</div>
+    <div class="blood-grid">
+      <div class="blood-card" onclick="selectAndSearchBlood('A+')"><div class="bt">A+</div><div class="bc">Most common</div><div class="bcount bav">24 units</div><div class="pbar"><div class="pbar-f p-g" style="width:80%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('A-')"><div class="bt">A-</div><div class="bc">Rare type</div><div class="bcount bcrit">2 units</div><div class="pbar"><div class="pbar-f p-r" style="width:10%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('B+')"><div class="bt">B+</div><div class="bc">Common</div><div class="bcount bav">18 units</div><div class="pbar"><div class="pbar-f p-g" style="width:65%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('B-')"><div class="bt">B-</div><div class="bc">Uncommon</div><div class="bcount blow">5 units</div><div class="pbar"><div class="pbar-f p-o" style="width:30%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('O+')"><div class="bt">O+</div><div class="bc">Universal donor</div><div class="bcount bav">31 units</div><div class="pbar"><div class="pbar-f p-g" style="width:90%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('O-')"><div class="bt">O-</div><div class="bc">Universal compatible</div><div class="bcount bcrit">1 unit</div><div class="pbar"><div class="pbar-f p-r" style="width:5%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('AB+')"><div class="bt">AB+</div><div class="bc">Universal recipient</div><div class="bcount blow">7 units</div><div class="pbar"><div class="pbar-f p-o" style="width:35%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('AB-')"><div class="bt">AB-</div><div class="bc">Rarest type</div><div class="bcount bcrit">0 units</div><div class="pbar"><div class="pbar-f p-r" style="width:0%"></div></div></div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div style="background:var(--gr3);padding:4rem 2rem">
+    <div style="max-width:1100px;margin:0 auto">
+      <div class="section-title" style="text-align:center">How <span class="accent">LifeLink</span> Works</div>
+      <div class="section-sub" style="text-align:center">Simple. Fast. Life-saving.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.5rem;margin-top:2rem">
+        <div class="card" style="text-align:center;padding:2rem 1.5rem">
+          <div style="font-size:2.5rem;margin-bottom:1rem">📝</div>
+          <div style="font-weight:700;margin-bottom:.5rem">1. Register</div>
+          <div style="font-size:13px;color:var(--gr)">Sign up as a donor, patient, hospital, or blood bank in under 2 minutes.</div>
+        </div>
+        <div class="card" style="text-align:center;padding:2rem 1.5rem">
+          <div style="font-size:2.5rem;margin-bottom:1rem">🧠</div>
+          <div style="font-weight:700;margin-bottom:.5rem">2. AI Matching</div>
+          <div style="font-size:13px;color:var(--gr)">Our AI instantly matches donors with patients based on blood type, location, and eligibility.</div>
+        </div>
+        <div class="card" style="text-align:center;padding:2rem 1.5rem">
+          <div style="font-size:2.5rem;margin-bottom:1rem">🔔</div>
+          <div style="font-weight:700;margin-bottom:.5rem">3. Get Notified</div>
+          <div style="font-size:13px;color:var(--gr)">Receive real-time alerts for emergencies, scheduled camps, and eligibility reminders.</div>
+        </div>
+        <div class="card" style="text-align:center;padding:2rem 1.5rem">
+          <div style="font-size:2.5rem;margin-bottom:1rem">💉</div>
+          <div style="font-weight:700;margin-bottom:.5rem">4. Donate &amp; Save</div>
+          <div style="font-size:13px;color:var(--gr)">Respond to requests, donate blood, earn badges, and track your impact in real-time.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <h3>🩸 LifeLink</h3>
+        <p>Connecting blood donors with patients in real-time. Every drop counts. Be the hero someone needs today.</p>
+        <button class="btn-emergency" style="margin-top:1rem;font-size:13px;padding:10px 20px" onclick="triggerSOS()">🚨 Emergency SOS</button>
+      </div>
+      <div class="footer-col">
+        <h4>Platform</h4>
+        <a onclick="showPage('home')">Home</a>
+        <a onclick="showPage('emergency')">Emergency</a>
+        <a onclick="showPage('find-blood')">Find Blood</a>
+        <a onclick="showPage('map')">Live Map</a>
+        <a onclick="showPage('ai-match')">AI Matching</a>
+      </div>
+      <div class="footer-col">
+        <h4>Dashboards</h4>
+        <a onclick="showPage('donor-dash')">Donor Portal</a>
+        <a id="footer-admin-link" onclick="showPage('dashboard')" style="display: none;">Admin Panel</a>
+        <a onclick="showPage('hospital')">Hospital Dashboard</a>
+        <a onclick="showPage('bloodbank')">Blood Bank Portal</a>
+      </div>
+      <div class="footer-col">
+        <h4>More</h4>
+        <a onclick="showPage('camps')">Donation Camps</a>
+        <a onclick="showPage('leaderboard')">Leaderboard</a>
+        <a onclick="showPage('notifications')">Notifications</a>
+        <a onclick="showPage('passport')">Blood Passport</a>
+        <a onclick="showPage('auth')">Sign Up / Login</a>
+      </div>
+    </div>
+    <div class="footer-bottom">© 2026 LifeLink Technologies Pvt. Ltd. · Saving lives, one drop at a time 🩸</div>
+  </footer>
+</div>
+<!-- END HOME -->
+
+<!-- ===================== EMERGENCY PAGE ===================== -->
+<div class="page" id="emergency">
+  <div class="section-sm">
+    <div class="dash-header">
+      <div>
+        <div class="dash-title">🚨 Emergency Blood Requests</div>
+        <div class="dash-sub">Real-time board — sorted by urgency. Your response can save a life.</div>
+      </div>
+      <button class="btn btn-red" onclick="createEmergencyRequest()">+ New Emergency Request</button>
+    </div>
+    <!-- Filter tabs -->
+    <div style="display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap">
+      <button class="mf-btn active" onclick="filterEmergencies(this, 'All')">All (4)</button>
+      <button class="mf-btn" onclick="filterEmergencies(this, 'Critical')">🔴 Critical (2)</button>
+      <button class="mf-btn" onclick="filterEmergencies(this, 'Urgent')">🟡 Urgent (1)</button>
+      <button class="mf-btn" onclick="filterEmergencies(this, 'Normal')">🟢 Normal (1)</button>
+    </div>
+    <div id="page-emergencies-container" style="display:flex;flex-direction:column;gap:1rem">
+      <!-- Rendered dynamically -->
+    </div>
+  </div>
+</div>
+
+<!-- ===================== FIND BLOOD PAGE ===================== -->
+<div class="page" id="find-blood">
+  <div class="section-sm">
+    <div class="dash-header">
+      <div>
+        <div class="dash-title">Find <span class="accent">Blood</span></div>
+        <div class="dash-sub">Search verified donors and blood banks near you in real-time</div>
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:var(--r);border:1.5px solid var(--gr4);padding:1.5rem;margin-bottom:1.5rem">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:130px">
+          <label class="form-label">Blood Type</label>
+          <select class="form-input" id="search-blood">
+            <option value="">Any Type</option>
+            <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+            <option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:130px">
+          <label class="form-label">City</label>
+          <select class="form-input" id="search-city">
+            <option>Coimbatore</option><option>Chennai</option><option>Bangalore</option><option>Madurai</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:130px">
+          <label class="form-label">Radius</label>
+          <select class="form-input" id="search-radius">
+            <option value="5">Within 5 km</option><option value="10">Within 10 km</option><option value="25">Within 25 km</option><option value="999">Any distance</option>
+          </select>
+        </div>
+        <div style="flex:1;min-width:130px">
+          <label class="form-label">Source</label>
+          <select class="form-input" id="search-source">
+            <option>All Sources</option><option>Donors Only</option><option>Blood Banks Only</option>
+          </select>
+        </div>
+        <button class="btn btn-red" onclick="runFindBloodSearch()">🔍 Search Now</button>
+      </div>
+    </div>
+    
+    <!-- Dynamic Search Results -->
+    <div id="search-results-section" style="display:none;margin-bottom:2rem">
+      <div class="section-title" style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+        <span>Search Results</span>
+        <button class="btn btn-gray btn-sm" onclick="clearFindBloodSearch()">Clear Results</button>
+      </div>
+      <div id="search-results-container" style="display:flex;flex-direction:column;gap:1rem">
+        <!-- Injected dynamically -->
+      </div>
+    </div>
+
+    <!-- Blood type grid -->
+    <div class="section-title" style="margin-bottom:1rem">Live Inventory</div>
+    <div class="blood-grid" style="margin-bottom:2rem">
+      <div class="blood-card" onclick="selectAndSearchBlood('A+')"><div class="bt">A+</div><div class="bc">Most common</div><div class="bcount bav">24 units</div><div class="pbar"><div class="pbar-f p-g" style="width:80%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('A-')"><div class="bt">A-</div><div class="bc">Rare type</div><div class="bcount bcrit">2 units</div><div class="pbar"><div class="pbar-f p-r" style="width:10%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('B+')"><div class="bt">B+</div><div class="bc">Common</div><div class="bcount bav">18 units</div><div class="pbar"><div class="pbar-f p-g" style="width:65%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('B-')"><div class="bt">B-</div><div class="bc">Uncommon</div><div class="bcount blow">5 units</div><div class="pbar"><div class="pbar-f p-o" style="width:30%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('O+')"><div class="bt">O+</div><div class="bc">Universal donor</div><div class="bcount bav">31 units</div><div class="pbar"><div class="pbar-f p-g" style="width:90%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('O-')"><div class="bt">O-</div><div class="bc">Universal compatible</div><div class="bcount bcrit">1 unit</div><div class="pbar"><div class="pbar-f p-r" style="width:5%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('AB+')"><div class="bt">AB+</div><div class="bc">Universal recipient</div><div class="bcount blow">7 units</div><div class="pbar"><div class="pbar-f p-o" style="width:35%"></div></div></div>
+      <div class="blood-card" onclick="selectAndSearchBlood('AB-')"><div class="bt">AB-</div><div class="bc">Rarest type</div><div class="bcount bcrit">0 units</div><div class="pbar"><div class="pbar-f p-r" style="width:0%"></div></div></div>
+    </div>
+    <!-- Nearby blood banks -->
+    <div class="section-title" style="margin-bottom:1rem">Nearby Blood Banks</div>
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      <div class="card" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+        <div style="width:48px;height:48px;background:var(--pk);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🏥</div>
+        <div style="flex:1">
+          <div style="font-weight:700">City Blood Bank</div>
+          <div style="font-size:13px;color:var(--gr)">📍 Race Course Road · 2.1 km · Open 8AM–8PM</div>
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+            <span class="badge b-ok">A+ ✓</span><span class="badge b-ok">B+ ✓</span><span class="badge b-ok">O+ ✓</span><span class="badge b-crit">O- ⚠</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="viewOnMap(11.0020, 76.9730, 'City Blood Bank', 'Race Course · 8AM–8PM · 12 types available')">View on Map</button>
+          <button class="btn btn-red btn-sm" onclick="toast('info','📞 Calling...','Connecting to City Blood Bank: 0422-234-5678')">Call Now</button>
+        </div>
+      </div>
+      <div class="card" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+        <div style="width:48px;height:48px;background:var(--pk);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🩸</div>
+        <div style="flex:1">
+          <div style="font-weight:700">Red Cross Blood Center</div>
+          <div style="font-size:13px;color:var(--gr)">📍 Gandhipuram · 3.8 km · Open 9AM–6PM</div>
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+            <span class="badge b-ok">A+ ✓</span><span class="badge b-ok">B+ ✓</span><span class="badge b-crit">A- ⚠</span><span class="badge b-ok">AB+ ✓</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="viewOnMap(11.0220, 76.9690, 'Red Cross Center', 'Gandhipuram · 9AM–6PM · 8 types available')">View on Map</button>
+          <button class="btn btn-red btn-sm" onclick="toast('info','📞 Calling...','Connecting to Red Cross: 0422-456-7890')">Call Now</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MAP PAGE ===================== -->
+<div class="page" id="map">
+  <div class="section-sm">
+    <div class="dash-header">
+      <div>
+        <div class="dash-title">Live <span class="accent">Donor Map</span></div>
+        <div class="dash-sub">Real-time locations of donors, hospitals, blood banks and patients in need</div>
+      </div>
+      <button class="btn btn-red" onclick="toast('info','📍 Location Updated','GPS location refreshed. Showing results within 5 km.')">📍 Use My Location</button>
+    </div>
+    
+    <div class="map-container">
+      <!-- Left Sidebar: Interactivity and Turn-by-Turn -->
+      <div class="map-sidebar">
+        <!-- Sidebar Navigation Tabs -->
+        <div style="display:flex;border-bottom:1.5px solid var(--gr4);padding-bottom:.5rem;gap:8px;position:sticky;top:0;background:#fff;z-index:5">
+          <button class="map-tab-btn active" id="tab-btn-requests" onclick="switchMapTab('requests')">🚨 Emergencies</button>
+          <button class="map-tab-btn" id="tab-btn-directions" onclick="switchMapTab('directions')">🛣️ Route Guide</button>
+        </div>
+        
+        <!-- Tab Content: Active Emergency Requests -->
+        <div id="map-tab-requests" style="display:flex;flex-direction:column;gap:10px">
+          <!-- Populated dynamically via JS -->
+        </div>
+        
+        <!-- Tab Content: Driving Route & Turn-by-Turn Guidance -->
+        <div id="map-tab-directions" style="display:none;flex-direction:column;gap:12px">
+          <div id="nav-empty-state" style="text-align:center;padding:2.5rem 1rem;color:var(--gr)">
+            <div style="font-size:3rem;margin-bottom:.5rem">🧭</div>
+            <div style="font-weight:700;font-size:14px;color:var(--tx)">No Active Route</div>
+            <div style="font-size:12px;margin-top:4px">Select an emergency request from the list or click a marker on the map to start navigation guidance.</div>
+          </div>
+          
+          <div id="nav-route-info" style="display:none;flex-direction:column;gap:12px">
+            <div style="background:var(--pk);border-radius:var(--r2);padding:14px;border-left:4px solid var(--red);border-right:1px solid var(--pk2);border-top:1px solid var(--pk2);border-bottom:1px solid var(--pk2)">
+              <div style="font-size:10px;text-transform:uppercase;color:var(--red);font-weight:700;letter-spacing:.5px">Active Guidance To</div>
+              <div id="nav-dest-name" style="font-size:15px;font-weight:800;color:var(--tx);margin-top:2px">City General Hospital</div>
+              <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12px;color:var(--gr);border-top:1.5px solid rgba(192,57,43,.08);padding-top:8px">
+                <div>🛣️ Distance: <strong id="nav-distance" style="color:var(--tx)">2.1 km</strong></div>
+                <div>⏱️ Est. Time: <strong id="nav-duration" style="color:var(--tx)">6 mins</strong></div>
+              </div>
+            </div>
+            
+            <div style="font-size:11px;font-weight:700;color:var(--gr);text-transform:uppercase;letter-spacing:.4px;margin-top:4px">Turn-by-Turn Directions</div>
+            <div id="nav-steps-list" style="display:flex;flex-direction:column;border:1px solid var(--gr4);border-radius:var(--r2);background:#fff;max-height:220px;overflow-y:auto">
+              <!-- Steps go here -->
+            </div>
+            
+            <a id="google-maps-btn" href="#" target="_blank" class="btn btn-red btn-full" style="font-size:12px;padding:10px;justify-content:center;text-decoration:none;font-weight:700">
+              📲 Open in Google Maps GPS
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right Map Frame -->
+      <div class="map-wrap">
+        <div class="map-area" id="map-area"></div>
+        <!-- Info box -->
+        <div class="map-info-box" style="z-index: 1000; pointer-events: auto;">
+          <div style="font-size:13px;font-weight:700">📍 Coimbatore</div>
+          <div style="font-size:11px;color:var(--gr)">6 donors · 4 emergencies · 2 blood banks</div>
+        </div>
+        <!-- Legend -->
+        <div class="map-legend" style="z-index: 1000; pointer-events: auto;">
+          <div class="ml-item"><div class="map-dot dot-donor" style="position:static;flex-shrink:0"></div>Donor</div>
+          <div class="ml-item"><div class="map-dot dot-emerg" style="position:static;flex-shrink:0"></div>Patient (In Need)</div>
+          <div class="ml-item"><div class="map-dot dot-hosp" style="position:static;flex-shrink:0"></div>Hospital</div>
+          <div class="ml-item"><div class="map-dot dot-bank" style="position:static;flex-shrink:0"></div>Blood Bank</div>
+        </div>
+        <div class="map-filters">
+          <button class="mf-btn active" onclick="filterMap(this)">All</button>
+          <button class="mf-btn" onclick="filterMap(this)">Emergencies</button>
+          <button class="mf-btn" onclick="filterMap(this)">Donors</button>
+          <button class="mf-btn" onclick="filterMap(this)">Hospitals</button>
+          <button class="mf-btn" onclick="filterMap(this)">Blood Banks</button>
+          <button class="btn btn-red btn-sm" style="margin-left:auto" onclick="toast('info','📍 Sharing Location','Your anonymous location shared with emergency responders')">Share Location</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== AI MATCH PAGE ===================== -->
+<div class="page" id="ai-match">
+  <div class="section-sm">
+    <div class="dash-title" style="margin-bottom:.4rem">AI <span class="accent">Smart Matching</span></div>
+    <div class="dash-sub" style="margin-bottom:1.5rem">ML-powered donor matching — finds the best match in seconds based on compatibility, distance, and reliability</div>
+    <div class="ai-dark">
+      <h3>🧠 AI Donor Finder</h3>
+      <p>Enter patient requirements and our AI ranks the best matching donors instantly</p>
+      <div class="ai-inputs">
+        <div>
+          <label class="form-label" style="color:#94a3b8">Blood Type Needed</label>
+          <select class="ai-sel" id="ai-blood">
+            <option value="">Select type</option>
+            <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+            <option value="O+" selected>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" style="color:#94a3b8">Urgency Level</label>
+          <select class="ai-sel" id="ai-urgency">
+            <option value="">Select urgency</option>
+            <option value="Critical" selected>Critical</option><option>Urgent</option><option>Normal</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label" style="color:#94a3b8">Search Radius</label>
+          <select class="ai-sel">
+            <option>5 km</option><option>10 km</option><option>25 km</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-red" onclick="runAIMatch()">🧠 Find Best Matches →</button>
+    </div>
+    <div id="match-results" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.25rem;transition:opacity .4s">
+      <div class="match-card">
+        <span class="match-rank">#1 Best Match</span>
+        <div class="match-av">AK</div>
+        <div class="match-name">Arjun Kumar</div>
+        <div class="match-blood">O+</div>
+        <div class="score-row"><span>Compatibility</span><span style="font-weight:700">97%</span></div>
+        <div class="score-bar"><div class="score-fill" style="width:97%;background:var(--green)"></div></div>
+        <div class="score-row"><span>Reliability Score</span><span style="font-weight:700">92%</span></div>
+        <div class="score-bar"><div class="score-fill" style="width:92%;background:var(--bl)"></div></div>
+        <div class="score-row"><span>Emergency Response</span><span style="font-weight:700">88%</span></div>
+        <div class="score-bar"><div class="score-fill" style="width:88%;background:var(--or)"></div></div>
+        <div style="font-size:12px;color:var(--gr);margin-top:8px">📍 1.8 km · Last active 2h ago</div>
+        <button class="btn btn-red btn-full" style="margin-top:12px" onclick="contactDonor('Arjun Kumar')">📱 Contact Donor</button>
+      </div>
+      <div class="match-card">
+        <span class="match-rank">#2 Match</span>
+        <div class="match-av" style="background:linear-gradient(135deg,var(--bl),#1d4ed8)">PS</div>
+        <div class="match-name">Priya Sundaram</div>
+        <div class="match-blood">O+</div>
+        <div class="score-row"><span>Compatibility</span><span style="font-weight:700">94%</span></div>
+        <div class="score-bar"><div class="score-fill" style="width:94%;background:var(--green)"></div></div>
+        <div class="score-row"><span>Reliability Score</span><span style="font-weight:700">89%</span></div>
+        <div class="score-bar"><div class="score-fill" style="width:89%;background:var(--bl)"></div></div>
+        <div class="score-row"><span>Emergency Response</span><span style="font-weight:700">95%</span></div>
+        <div class="score-bar"><div class="score-fill" style="width:95%;background:var(--or)"></div></div>
+        <div style="font-size:12px;color:var(--gr);margin-top:8px">📍 2.4 km · Last active 30m ago</div>
+        <button class="btn btn-red btn-full" style="margin-top:12px" onclick="contactDonor('Priya Sundaram')">📱 Contact Donor</button>
+      </div>
+      <div class="match-card">
+        <span class="match-rank">#3 Match</span>
+        <div class="match-av" style="background:linear-gradient(135deg,var(--green),#047857)">RM</div>
+        <div class="match-name">Rahul Menon</div>
+        <div class="match-blood">O-</div>
+        <div class="score-row"><span>Compatibility</span><span style="font-weight:700">100%</span></div>
+        <div class="score-bar"><div class="score-fill" style="width:100%;background:var(--green)"></div></div>
+        <div class="score-row"><span>Reliability Score</span><span style="font-weight:700">78%</span></div>
+        <div class="score-bar"><div class="score-fill" style="width:78%;background:var(--bl)"></div></div>
+        <div class="score-row"><span>Emergency Response</span><span style="font-weight:700">71%</span></div>
+        <div class="score-bar"><div class="score-fill" style="width:71%;background:var(--or)"></div></div>
+        <div style="font-size:12px;color:var(--gr);margin-top:8px">📍 4.1 km · Last active 1d ago</div>
+        <button class="btn btn-red btn-full" style="margin-top:12px" onclick="contactDonor('Rahul Menon')">📱 Contact Donor</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ADMIN DASHBOARD ===================== -->
+<div class="page" id="dashboard">
+  <div class="dash-layout">
+    <div class="sidebar">
+      <div class="sb-title">Admin Panel</div>
+      <div class="si active" onclick="adminNav(this, 'overview')"><span>📊</span> Overview</div>
+      <div class="si" onclick="adminNav(this, 'emergencies')"><span>🚨</span> Emergencies</div>
+      <div class="si" onclick="adminNav(this, 'users')"><span>👥</span> All Users</div>
+      <div class="si" onclick="adminNav(this, 'hospitals')"><span>🏥</span> Hospitals</div>
+      <div class="si" onclick="adminNav(this, 'bloodbanks')"><span>🩸</span> Blood Banks</div>
+      <div class="si" onclick="adminNav(this, 'camps')"><span>📅</span> Camps</div>
+      <div class="sb-title">Tools</div>
+      <div class="si" onclick="adminNav(this, 'analytics')"><span>📈</span> Analytics</div>
+      <div class="si" onclick="adminNav(this, 'alerts')"><span>🔔</span> Alerts</div>
+      <div class="si" onclick="adminNav(this, 'settings')"><span>⚙️</span> Settings</div>
+    </div>
+    <div class="dash-main">
+      
+      <!-- ==================== 1. OVERVIEW SUBPAGE ==================== -->
+      <div class="admin-subpage active" id="admin-overview">
+        <div class="dash-header">
+          <div><div class="dash-title">Analytics Overview</div><div class="dash-sub">Real-time platform statistics — May 2026</div></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-gray" onclick="toast('info','📋 Exporting...','Report generation started. Download ready in 30s.')">Export Report</button>
+            <button class="btn btn-red" onclick="createEmergencyRequest()">+ Emergency Request</button>
+          </div>
+        </div>
+        <div class="mrow">
+          <div class="mc"><div class="mc-lbl">Total Donations</div><div class="mc-val">4.7M</div><div class="mc-ch up">↑ +12.4% this month</div></div>
+          <div class="mc"><div class="mc-lbl">Lives Saved</div><div class="mc-val">1.4M</div><div class="mc-ch up">↑ +8.2% this month</div></div>
+          <div class="mc"><div class="mc-lbl">Active Donors</div><div class="mc-val">85,421</div><div class="mc-ch up">↑ +2,140 new</div></div>
+          <div class="mc"><div class="mc-lbl">Emergency Response</div><div class="mc-val">98.2%</div><div class="mc-ch up">↑ +0.4%</div></div>
+        </div>
+        <!-- Bar Chart -->
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:1.25rem;margin-bottom:1.25rem">
+          <div class="card">
+            <div class="card-title">Monthly Donations (2026)</div>
+            <div style="display:flex;align-items:flex-end;gap:8px;height:150px;padding-bottom:24px;position:relative">
+              <div style="position:absolute;bottom:24px;left:0;right:0;height:1px;background:var(--gr4)"></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:100%;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--rl),var(--rd));height:70%;cursor:pointer" onclick="toast('info','January 2026','3,241 donations recorded')"></div><div style="font-size:10px;color:var(--gr)">Jan</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:100%;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--rl),var(--rd));height:85%;cursor:pointer" onclick="toast('info','February 2026','3,892 donations recorded')"></div><div style="font-size:10px;color:var(--gr)">Feb</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:100%;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--rl),var(--rd));height:60%;cursor:pointer" onclick="toast('info','March 2026','2,740 donations recorded')"></div><div style="font-size:10px;color:var(--gr)">Mar</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:100%;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--rl),var(--rd));height:95%;cursor:pointer" onclick="toast('info','April 2026','4,341 donations — peak month!')"></div><div style="font-size:10px;color:var(--gr)">Apr</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:100%;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--rl),var(--rd));height:100%;cursor:pointer" onclick="toast('info','May 2026','4,580 donations — new record!')"></div><div style="font-size:10px;color:var(--gr)">May</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:100%;border-radius:4px 4px 0 0;background:var(--gr4);height:75%;cursor:pointer" onclick="toast('info','June 2026','Projected: ~3,430 donations')"></div><div style="font-size:10px;color:var(--gr)">Jun</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Blood Type Distribution</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:30px;font-size:12px;font-weight:700;color:var(--red)">O+</div><div style="flex:1;background:var(--gr4);height:12px;border-radius:6px;overflow:hidden"><div style="width:38%;height:100%;background:var(--red)"></div></div><div style="font-size:11px;color:var(--gr);min-width:28px">38%</div></div>
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:30px;font-size:12px;font-weight:700;color:var(--red)">A+</div><div style="flex:1;background:var(--gr4);height:12px;border-radius:6px;overflow:hidden"><div style="width:27%;height:100%;background:var(--or)"></div></div><div style="font-size:11px;color:var(--gr);min-width:28px">27%</div></div>
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:30px;font-size:12px;font-weight:700;color:var(--red)">B+</div><div style="flex:1;background:var(--gr4);height:12px;border-radius:6px;overflow:hidden"><div style="width:20%;height:100%;background:var(--bl)"></div></div><div style="font-size:11px;color:var(--gr);min-width:28px">20%</div></div>
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:30px;font-size:12px;font-weight:700;color:var(--red)">AB+</div><div style="flex:1;background:var(--gr4);height:12px;border-radius:6px;overflow:hidden"><div style="width:9%;height:100%;background:var(--green)"></div></div><div style="font-size:11px;color:var(--gr);min-width:28px">9%</div></div>
+              <div style="display:flex;align-items:center;gap:8px"><div style="width:30px;font-size:12px;font-weight:700;color:var(--red)">O-</div><div style="flex:1;background:var(--gr4);height:12px;border-radius:6px;overflow:hidden"><div style="width:6%;height:100%;background:var(--pu)"></div></div><div style="font-size:11px;color:var(--gr);min-width:28px">6%</div></div>
+            </div>
+          </div>
+        </div>
+        <!-- Recent activity table -->
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <div class="card-title" style="margin:0">Recent Donation Activity</div>
+            <button class="btn btn-gray btn-sm" onclick="refreshDonationActivity()">Refresh</button>
+          </div>
+          <table class="tbl">
+            <thead><tr><th>Donor</th><th>Blood Type</th><th>Hospital</th><th>Time</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="admin-overview-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ==================== 2. EMERGENCIES SUBPAGE ==================== -->
+      <div class="admin-subpage" id="admin-emergencies" style="display:none">
+        <div class="dash-header">
+          <div><div class="dash-title">Active Emergency Dispatch</div><div class="dash-sub">Monitor and escalate platform critical requests</div></div>
+          <button class="btn btn-red" onclick="createEmergencyRequest()">+ Add Request</button>
+        </div>
+        <div class="card">
+          <table class="tbl">
+            <thead><tr><th>Patient</th><th>Blood Needed</th><th>Hospital</th><th>Urgency</th><th>Units</th><th>Dispatched Alerts</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="admin-emergencies-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ==================== 3. USERS SUBPAGE ==================== -->
+      <div class="admin-subpage" id="admin-users" style="display:none">
+        <div class="dash-header">
+          <div><div class="dash-title">Platform Directory</div><div class="dash-sub">Manage registered system accounts and permissions</div></div>
+        </div>
+        <div class="card">
+          <table class="tbl">
+            <thead><tr><th>Name</th><th>Role</th><th>Blood Type</th><th>Location</th><th>Activity Status</th><th>Action</th></tr></thead>
+            <tbody id="admin-users-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ==================== 4. HOSPITALS SUBPAGE ==================== -->
+      <div class="admin-subpage" id="admin-hospitals" style="display:none">
+        <div class="dash-header">
+          <div><div class="dash-title">Affiliated Hospitals</div><div class="dash-sub">Monitor institutional accounts, quotas, and request frequencies</div></div>
+          <button class="btn btn-gray" onclick="verifyNewHospitalPartner()">Verify New Partner</button>
+        </div>
+        <div class="card">
+          <table class="tbl">
+            <thead><tr><th>Hospital Name</th><th>Location</th><th>Active Emergencies</th><th>Monthly Request Quota</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="admin-hospitals-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ==================== 5. BLOOD BANKS SUBPAGE ==================== -->
+      <div class="admin-subpage" id="admin-bloodbanks" style="display:none">
+        <div class="dash-header">
+          <div><div class="dash-title">Blood Bank Registries</div><div class="dash-sub">Monitor localized inventory stocks and transfer activities</div></div>
+          <button class="btn btn-gray" onclick="syncAdminRegistries()">Sync Registries</button>
+        </div>
+        <div class="card">
+          <table class="tbl">
+            <thead><tr><th>Blood Bank Name</th><th>Address</th><th>Total Stock Balance</th><th>Active Transfers</th><th>API Connection</th><th>Actions</th></tr></thead>
+            <tbody id="admin-bloodbanks-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ==================== 6. CAMPS SUBPAGE ==================== -->
+      <div class="admin-subpage" id="admin-camps" style="display:none">
+        <div class="dash-header">
+          <div><div class="dash-title">Donation Drives & Camps</div><div class="dash-sub">Manage and approve localized donation camps schedules</div></div>
+          <button class="btn btn-red" onclick="addAdminCamp()">+ Add Drive</button>
+        </div>
+        <div class="card">
+          <table class="tbl">
+            <thead><tr><th>Camp Title</th><th>Scheduled Date</th><th>Location</th><th>Registrations</th><th>Permissions</th><th>Status</th></tr></thead>
+            <tbody id="admin-camps-tbody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ==================== 7. ANALYTICS SUBPAGE ==================== -->
+      <div class="admin-subpage" id="admin-analytics" style="display:none">
+        <div class="dash-header">
+          <div><div class="dash-title">Deep Dive Analytics</div><div class="dash-sub">Advanced operational statistics & performance indicators</div></div>
+          <button class="btn btn-gray" onclick="toast('info','📊 Downloading Data','CSV spreadsheet download will begin shortly.')">Export Advanced Data</button>
+        </div>
+        <div class="mrow" style="margin-bottom:1.5rem">
+          <div class="mc" style="background:#f8fafc"><div class="mc-lbl">Average Response Time</div><div class="mc-val" style="color:var(--rd)">5.8 min</div><div class="mc-ch up">↓ -1.2 min faster</div></div>
+          <div class="mc" style="background:#f8fafc"><div class="mc-lbl">Donor Retention Rate</div><div class="mc-val" style="color:var(--rd)">72%</div><div class="mc-ch up">↑ +4% this quarter</div></div>
+          <div class="mc" style="background:#f8fafc"><div class="mc-lbl">Alert Delivery Success</div><div class="mc-val" style="color:var(--rd)">99.4%</div><div class="mc-ch up">SMS & Push active</div></div>
+          <div class="mc" style="background:#f8fafc"><div class="mc-lbl">Blood Stock Expiry Rate</div><div class="mc-val" style="color:var(--rd)">0.8%</div><div class="mc-ch up">↓ -0.3% low waste</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+          <div class="card">
+            <div class="card-title">Peak Donation Channels</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+              <div style="display:flex;justify-content:space-between;font-size:13px"><strong>Mobile Donation Camps</strong><span>58% of donations</span></div>
+              <div class="pbar" style="height:10px"><div class="pbar-f p-g" style="width:58%"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><strong>Walk-ins at Blood Banks</strong><span>28% of donations</span></div>
+              <div class="pbar" style="height:10px"><div class="pbar-f p-b" style="width:28%"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><strong>Hospital Urgent Appeals</strong><span>14% of donations</span></div>
+              <div class="pbar" style="height:10px"><div class="pbar-f p-r" style="width:14%"></div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Active Donor Demographics</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+              <div style="display:flex;justify-content:space-between;font-size:13px"><strong>Age 18 - 25</strong><span>42% (Youth drive spike)</span></div>
+              <div class="pbar" style="height:10px"><div class="pbar-f p-o" style="width:42%"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><strong>Age 26 - 40</strong><span>38% (Corporate volunteers)</span></div>
+              <div class="pbar" style="height:10px"><div class="pbar-f p-g" style="width:38%"></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:13px"><strong>Age 41 - 65</strong><span>20% (Consistent donors)</span></div>
+              <div class="pbar" style="height:10px"><div class="pbar-f p-b" style="width:20%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 8. ALERTS SUBPAGE ==================== -->
+      <div class="admin-subpage" id="admin-alerts" style="display:none">
+        <div class="dash-header">
+          <div><div class="dash-title">Platform Alerts Broadcaster</div><div class="dash-sub">Send targeted notifications to nearby blood donors</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:1.25rem">
+          <!-- Form -->
+          <div class="card">
+            <div class="card-title">Compose Targeted Alert Broadcast</div>
+            <div style="display:flex;flex-direction:column;gap:1rem;margin-top:10px">
+              <div>
+                <label class="form-label">Select Notification Category</label>
+                <select class="form-input" id="admin-alert-type">
+                  <option value="SOS Broadcast">🚨 SOS Broadcast (Critical Need)</option>
+                  <option value="Stock Warning">⚠️ Stock Shortage Alert</option>
+                  <option value="Camp Announcement" selected>📢 Camp Promotion / Volunteer Appeal</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label">Target Audience Group</label>
+                <select class="form-input" id="admin-alert-audience">
+                  <option>All Registered Donors (Coimbatore)</option>
+                  <option>Negative Blood Types Only (O-, A-, B-, AB-)</option>
+                  <option>O+ Universal Donors Only</option>
+                  <option>PSG College Area Donors (Within 3km)</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label">Broadcast Message Content</label>
+                <textarea class="form-input" id="admin-alert-msg" style="height:90px;resize:none;padding:10px;font-family:inherit" placeholder="Type notification message here... (e.g. Critical stock shortage of O- blood type at Apollo Hospital. If eligible, please visit to donate immediately!)"></textarea>
+              </div>
+              <button class="btn btn-red" onclick="sendAdminAlert()" style="justify-content:center;padding:12px;font-weight:700">🚀 Send Alert Broadcast Now</button>
+            </div>
+          </div>
+          <!-- Log -->
+          <div class="card">
+            <div class="card-title">Alert Broadcasts History</div>
+            <div style="max-height:330px;overflow-y:auto;margin-top:10px">
+              <table class="tbl" style="font-size:11px">
+                <thead><tr><th>Type</th><th>Audience</th><th>Message Snippet</th><th>Time</th><th>Status</th></tr></thead>
+                <tbody id="admin-alert-history">
+                  <tr><td><span class="badge b-crit">SOS Broadcast</span></td><td>O- Donors</td><td>O- needed urgently at Apollo Hospitals...</td><td>10m ago</td><td><span class="badge b-ok">Sent</span></td></tr>
+                  <tr><td><span class="badge b-urg">Stock Warning</span></td><td>All Donors</td><td>O- stock critically low cross banks...</td><td>3h ago</td><td><span class="badge b-ok">Sent</span></td></tr>
+                  <tr><td><span class="badge b-ok">Camp Appeal</span></td><td>PSG Area</td><td>Volunteer registration for PSG drive is...</td><td>Yesterday</td><td><span class="badge b-ok">Sent</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== 9. SETTINGS SUBPAGE ==================== -->
+      <div class="admin-subpage" id="admin-settings" style="display:none">
+        <div class="dash-header">
+          <div><div class="dash-title">Platform Dashboard Settings</div><div class="dash-sub">Configure platform variables, AI thresholds, and API connections</div></div>
+          <button class="btn btn-red" onclick="saveAdminSettings()">Save Configuration</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+          <div class="card">
+            <div class="card-title">🧠 AI Matching Sensitivity</div>
+            <div style="display:flex;flex-direction:column;gap:1rem;margin-top:10px">
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px">
+                  <span>Donor Proximity Radius Weight</span><span>80%</span>
+                </div>
+                <input type="range" class="form-input" style="padding:0" min="0" max="100" value="80">
+              </div>
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:4px">
+                  <span>Reliability & Response Speed Weight</span><span>90%</span>
+                </div>
+                <input type="range" class="form-input" style="padding:0" min="0" max="100" value="90">
+              </div>
+              <div>
+                <label class="form-label">SOS Radius Range Broadcast</label>
+                <select class="form-input">
+                  <option>Within 5 km radius</option>
+                  <option selected>Within 10 km radius</option>
+                  <option>Within 25 km radius</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">🖥️ Server Gateways & API Connections</div>
+            <div style="display:flex;flex-direction:column;gap:12px;margin-top:10px">
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--gr4);padding-bottom:8px">
+                <span>Database Connectivity (Supabase)</span><span class="badge b-ok">Online ✓</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--gr4);padding-bottom:8px">
+                <span>SMS Broadcast Gateway (Twilio)</span><span class="badge b-ok">Online ✓</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--gr4);padding-bottom:8px">
+                <span>Leaflet Map Routing Engine (OSRM)</span><span class="badge b-ok">Online ✓</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--gr4);padding-bottom:8px">
+                <span>AI Matching Engine (Tensorflow Hub)</span><span class="badge b-ok">Online ✓</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="donor-dash">
+  <div class="dash-layout">
+    <div class="sidebar">
+      <div class="sb-title">Donor Portal</div>
+      <div class="si active" onclick="donorNav(this, 'overview')"><span>🏠</span> Dashboard</div>
+      <div class="si" onclick="donorNav(this);showPage('notifications')"><span>🔔</span> Notifications <span style="background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:auto">3</span></div>
+      <div class="si" onclick="donorNav(this);showPage('camps')"><span>📅</span> Book Appointment</div>
+      <div class="si" onclick="donorNav(this);showPage('emergency')"><span>🚨</span> Near Me</div>
+      <div class="si" onclick="donorNav(this);showPage('leaderboard')"><span>🏆</span> Leaderboard</div>
+      <div class="si" onclick="donorNav(this);showPage('passport')"><span>🪪</span> Blood Passport</div>
+      <div class="si" onclick="donorNav(this, 'profile')"><span>👤</span> Profile</div>
+      <div class="si" onclick="donorNav(this, 'settings')"><span>⚙️</span> Settings</div>
+    </div>
+    <div class="dash-main">
+      <div class="donor-subpage active" id="donor-overview">
+        <!-- Profile card -->
+        <div class="card" style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1.25rem;flex-wrap:wrap">
+          <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--rl),var(--rd));display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;font-weight:800;flex-shrink:0">AK</div>
+          <div style="flex:1">
+            <div style="font-size:1.2rem;font-weight:800">Arjun Kumar</div>
+            <div style="font-size:13px;color:var(--gr);margin:2px 0">🏅 Elite Donor · Level 12 · Coimbatore</div>
+            <div style="font-size:13px;color:var(--green);font-weight:600">✅ Eligible to donate now</div>
+            <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+              <span class="badge b-crit">Emergency Hero</span>
+              <span class="badge b-urg">Lifesaver ×5</span>
+              <span class="badge b-pu">Rare Champion</span>
+            </div>
+          </div>
+          <div style="font-size:2.5rem;font-weight:900;color:var(--red);min-width:60px;text-align:center">O+</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn" id="avail-btn" data-on="true" style="background:#d1fae5;color:#065f46;border:1.5px solid #6ee7b7;font-size:12px" onclick="toggleAvailability(this)">🟢 Available</button>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-outline btn-sm" onclick="showPage('passport')">View Passport</button>
+              <button class="btn btn-red btn-sm" style="background:var(--red);color:#fff;border:none" onclick="openProfileRequestModal('u1')">✏️ Edit Profile</button>
+            </div>
+          </div>
+        </div>
+        <!-- Eligibility -->
+        <div style="background:linear-gradient(135deg,#d1fae5,#a7f3d0);border-radius:var(--r);padding:1.25rem;border:1.5px solid #6ee7b7;margin-bottom:1.25rem">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:.4rem"><span style="font-size:20px">✅</span><div style="font-size:14px;font-weight:700;color:#065f46">You are eligible to donate today!</div></div>
+          <div style="font-size:1.4rem;font-weight:800;color:#065f46">Ready Now</div>
+          <div style="font-size:12px;color:#047857">Last donated Feb 24, 2026 — 90 days have passed. You're ready!</div>
+          <button class="btn" style="background:#065f46;color:#fff;margin-top:12px" onclick="showPage('camps')">📅 Book Appointment Now</button>
+        </div>
+        <!-- Impact stats -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem">
+          <div class="card" style="text-align:center"><div style="font-size:2rem;font-weight:900;color:var(--red)">12</div><div style="font-size:12px;color:var(--gr);margin-top:4px">Total Donations</div></div>
+          <div class="card" style="text-align:center"><div style="font-size:2rem;font-weight:900;color:var(--red)">36</div><div style="font-size:12px;color:var(--gr);margin-top:4px">Lives Impacted</div></div>
+          <div class="card" style="text-align:center"><div style="font-size:2rem;font-weight:900;color:var(--red)">4.8L</div><div style="font-size:12px;color:var(--gr);margin-top:4px">ml Blood Donated</div></div>
+        </div>
+        <!-- Badges -->
+        <div class="card">
+          <div class="card-title">🏆 Achievements & Badges</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+            <div style="text-align:center;padding:.75rem;border-radius:10px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;cursor:pointer" onclick="toast('success','🩸 First Donation','Awarded for completing your very first blood donation. +200 XP')"><div style="font-size:1.8rem">🩸</div><div style="font-size:10px;font-weight:700;margin-top:4px">First Donation</div></div>
+            <div style="text-align:center;padding:.75rem;border-radius:10px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;cursor:pointer" onclick="toast('success','🦸 Emergency Hero','Responded to 3+ emergency requests. +500 XP')"><div style="font-size:1.8rem">🦸</div><div style="font-size:10px;font-weight:700;margin-top:4px">Emergency Hero</div></div>
+            <div style="text-align:center;padding:.75rem;border-radius:10px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;cursor:pointer" onclick="toast('success','❤️ Lifesaver','Donated 5+ times. Each donation saves up to 3 lives! +300 XP')"><div style="font-size:1.8rem">❤️</div><div style="font-size:10px;font-weight:700;margin-top:4px">Lifesaver</div></div>
+            <div style="text-align:center;padding:.75rem;border-radius:10px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;cursor:pointer" onclick="toast('success','💎 Rare Champion','Rare blood group donor. You are invaluable! +600 XP')"><div style="font-size:1.8rem">💎</div><div style="font-size:10px;font-weight:700;margin-top:4px">Rare Champion</div></div>
+            <div style="text-align:center;padding:.75rem;border-radius:10px;background:var(--gr3);cursor:pointer" onclick="toast('info','🔥 Streak x10','Donate 10 times in a row to unlock. You need 3 more!')"><div style="font-size:1.8rem;opacity:.4">🔥</div><div style="font-size:10px;font-weight:700;margin-top:4px;color:var(--gr2)">Streak ×10</div></div>
+            <div style="text-align:center;padding:.75rem;border-radius:10px;background:var(--gr3);cursor:pointer" onclick="toast('info','🌟 Top Donor','Reach top 100 on the leaderboard. You are at #142!')"><div style="font-size:1.8rem;opacity:.4">🌟</div><div style="font-size:10px;font-weight:700;margin-top:4px;color:var(--gr2)">Top Donor</div></div>
+            <div style="text-align:center;padding:.75rem;border-radius:10px;background:var(--gr3);cursor:pointer" onclick="toast('info','👑 Legend','Donate 50+ times to unlock this prestigious badge')"><div style="font-size:1.8rem;opacity:.4">👑</div><div style="font-size:10px;font-weight:700;margin-top:4px;color:var(--gr2)">Legend</div></div>
+            <div style="text-align:center;padding:.75rem;border-radius:10px;background:var(--gr3);cursor:pointer" onclick="toast('info','🏅 Century Club','100 donations milestone. Keep going!')"><div style="font-size:1.8rem;opacity:.4">🏅</div><div style="font-size:10px;font-weight:700;margin-top:4px;color:var(--gr2)">Century Club</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Donor Profile Subpage -->
+      <div class="donor-subpage" id="donor-profile" style="display:none">
+        <div class="dash-header">
+          <div>
+            <div class="dash-title">My Profile Details</div>
+            <div class="dash-sub">View and update your personal donor account settings</div>
+          </div>
+        </div>
+        <div class="card" style="max-width:550px">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input class="form-input" id="donor-profile-name" value="Arjun Kumar">
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Blood Type</label>
+              <select class="form-input" id="donor-profile-blood" disabled>
+                <option>O+</option><option>O-</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option>
+              </select>
+              <div style="font-size:11px;color:var(--gr);margin-top:4px">Locked verified status.</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Location / City</label>
+              <input class="form-input" id="donor-profile-loc" value="Coimbatore">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mobile Number</label>
+            <input class="form-input" id="donor-profile-phone" value="+91 98765 43210">
+          </div>
+          <button class="btn btn-red" onclick="saveDonorProfile()">Save Profile Details</button>
+        </div>
+      </div>
+
+      <!-- Donor Settings Subpage -->
+      <div class="donor-subpage" id="donor-settings" style="display:none">
+        <div class="dash-header">
+          <div>
+            <div class="dash-title">Notifications & Privacy</div>
+            <div class="dash-sub">Configure how you receive alerts and display preferences</div>
+          </div>
+        </div>
+        <div class="card" style="max-width:550px;display:flex;flex-direction:column;gap:1.25rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--gr4);padding-bottom:12px">
+            <div>
+              <strong style="font-size:14px">Anonymous Donor Mode</strong>
+              <div style="font-size:12px;color:var(--gr)">Hide your name in public search matches (only city & blood type are shown)</div>
+            </div>
+            <input type="checkbox" id="donor-settings-anon" style="width:20px;height:20px">
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--gr4);padding-bottom:12px">
+            <div>
+              <strong style="font-size:14px">SMS Emergency Broadcast alerts</strong>
+              <div style="font-size:12px;color:var(--gr)">Receive SMS texts for critical nearby requests matching O+</div>
+            </div>
+            <input type="checkbox" id="donor-settings-sms" checked style="width:20px;height:20px">
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:4px">
+            <div>
+              <strong style="font-size:14px">Upcoming Camp Alerts</strong>
+              <div style="font-size:12px;color:var(--gr)">Get email notifications on newly scheduled camps in Coimbatore</div>
+            </div>
+            <input type="checkbox" id="donor-settings-email" checked style="width:20px;height:20px">
+          </div>
+          <button class="btn btn-red" onclick="toast('success','⚙️ Settings Saved','Your preferences have been updated successfully.')">Save Preferences</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="page" id="hospital">
+  <div class="dash-layout">
+    <div class="sidebar">
+      <div class="sb-title">Hospital</div>
+      <div class="si active" onclick="hospitalNav(this, 'overview')"><span>📊</span> Overview</div>
+      <div class="si" onclick="hospitalNav(this);showPage('emergency')"><span>🚨</span> Emergencies</div>
+      <div class="si" onclick="hospitalNav(this, 'inventory')"><span>🩸</span> Blood Inventory</div>
+      <div class="si" onclick="hospitalNav(this, 'verify')"><span>👤</span> Verify Donors</div>
+      <div class="si" onclick="hospitalNav(this);showPage('camps')"><span>📅</span> Donation Drives</div>
+      <div class="si" onclick="hospitalNav(this, 'reports')"><span>📈</span> Reports</div>
+    </div>
+    <div class="dash-main">
+      <div class="dash-header">
+        <div><div class="dash-title">Apollo Hospitals — Command Center</div><div class="dash-sub">Real-time blood management</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="openProfileRequestModal('u4')">✏️ Edit Profile</button>
+          <button class="btn btn-red" onclick="createEmergencyRequest()">🚨 + Emergency Request</button>
+        </div>
+      </div>
+
+      <!-- Overview Subpage -->
+      <div class="hospital-subpage active" id="hospital-overview">
+        <div class="mrow">
+          <div class="mc"><div class="mc-lbl">Active Requests</div><div class="mc-val">7</div><div class="mc-ch dn">▲ 3 critical now</div></div>
+          <div class="mc"><div class="mc-lbl">Units in Stock</div><div class="mc-val">142</div><div class="mc-ch neu">⚠ 3 types low</div></div>
+          <div class="mc"><div class="mc-lbl">Donors Verified</div><div class="mc-val">1,284</div><div class="mc-ch up">↑ +48 this week</div></div>
+          <div class="mc"><div class="mc-lbl">Response Rate</div><div class="mc-val">96.4%</div><div class="mc-ch up">↑ +1.2%</div></div>
+        </div>
+        <div class="card" style="margin-bottom:1.25rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <div class="card-title" style="margin:0">Active Requests Telemetry</div>
+            <button class="btn btn-gray btn-sm" onclick="showPage('emergency')">View Board</button>
+          </div>
+          <p style="font-size:13px;color:var(--gr)">Manage active patient requisitions. Switch tabs to access detailed inventory logs or credential verification portals.</p>
+        </div>
+      </div>
+
+      <!-- Inventory Subpage -->
+      <div class="hospital-subpage" id="hospital-inventory" style="display:none">
+        <div class="card" style="margin-bottom:1.25rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <div class="card-title" style="margin:0">Blood Inventory Status</div>
+            <button class="btn btn-gray btn-sm" onclick="requestTransfer()">Request Transfer</button>
+          </div>
+          <div class="inv-grid">
+            <div class="inv-card" onclick="toast('info','A+ Stock','24 units · Adequate supply. Next review: June 1')"><div class="inv-type">A+</div><div class="inv-units">24</div><div class="inv-lbl">units</div><div class="pbar"><div class="pbar-f p-g" style="width:80%"></div></div><div class="inv-al al-ok">Adequate</div></div>
+            <div class="inv-card" onclick="toast('warning','⚠️ A- Critical','Only 2 units! Requesting emergency donors now')"><div class="inv-type">A-</div><div class="inv-units">2</div><div class="inv-lbl">units</div><div class="pbar"><div class="pbar-f p-r" style="width:10%"></div></div><div class="inv-al al-crit">Critical!</div></div>
+            <div class="inv-card" onclick="toast('info','B+ Stock','18 units · Adequate supply')"><div class="inv-type">B+</div><div class="inv-units">18</div><div class="inv-lbl">units</div><div class="pbar"><div class="pbar-f p-g" style="width:65%"></div></div><div class="inv-al al-ok">Adequate</div></div>
+            <div class="inv-card" onclick="toast('warning','⚠️ B- Low Stock','4 units remaining. Consider requesting transfer')"><div class="inv-type">B-</div><div class="inv-units">4</div><div class="inv-lbl">units</div><div class="pbar"><div class="pbar-f p-o" style="width:25%"></div></div><div class="inv-al al-low">Low Stock</div></div>
+            <div class="inv-card" onclick="toast('info','O+ Stock','31 units · Highest stock. Adequate.')"><div class="inv-type">O+</div><div class="inv-units">31</div><div class="inv-lbl">units</div><div class="pbar"><div class="pbar-f p-g" style="width:90%"></div></div><div class="inv-al al-ok">Adequate</div></div>
+            <div class="inv-card" onclick="toast('emergency','🚨 O- Critical','1 unit only! Broadcasting emergency to all O- donors')"><div class="inv-type">O-</div><div class="inv-units">1</div><div class="inv-lbl">units</div><div class="pbar"><div class="pbar-f p-r" style="width:5%"></div></div><div class="inv-al al-crit">Critical!</div></div>
+            <div class="inv-card" onclick="toast('warning','⚠️ AB+ Low','7 units remaining')"><div class="inv-type">AB+</div><div class="inv-units">7</div><div class="inv-lbl">units</div><div class="pbar"><div class="pbar-f p-o" style="width:35%"></div></div><div class="inv-al al-low">Low Stock</div></div>
+            <div class="inv-card" onclick="toast('emergency','🚨 AB- Out of Stock','0 units! Searching for donors now...')"><div class="inv-type">AB-</div><div class="inv-units">0</div><div class="inv-lbl">units</div><div class="pbar"><div class="pbar-f p-r" style="width:0%"></div></div><div class="inv-al al-crit">Out of Stock</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Active Blood Requests</div>
+          <table class="tbl">
+            <thead><tr><th>Blood Type</th><th>Units</th><th>Ward</th><th>Urgency</th><th>Donors Notified</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight:800;color:var(--red)">A-</td><td>3</td><td>ICU Ward 2</td><td><span class="badge b-crit">Critical</span></td><td>12</td><td><span class="badge b-urg">Pending</span></td><td><button class="btn btn-gray btn-sm" onclick="toast('emergency','🚨 Escalated','Request broadcast to all city donors')">Escalate</button></td></tr>
+              <tr><td style="font-weight:800;color:var(--red)">B+</td><td>2</td><td>Surgery OT</td><td><span class="badge b-urg">Urgent</span></td><td>8</td><td><span class="badge b-blue">In Progress</span></td><td><button class="btn btn-gray btn-sm" onclick="toast('info','📞 Calling','Connecting to matched donor')">Call Donor</button></td></tr>
+              <tr><td style="font-weight:800;color:var(--red)">O-</td><td>1</td><td>Emergency</td><td><span class="badge b-crit">Critical</span></td><td>5</td><td><span class="badge b-urg">Pending</span></td><td><button class="btn btn-gray btn-sm" onclick="toast('info','🧠 AI Matching','Finding best O- match...')">AI Match</button></td></tr>
+              <tr><td style="font-weight:800;color:var(--red)">AB+</td><td>2</td><td>Maternity</td><td><span class="badge b-ok">Normal</span></td><td>18</td><td><span class="badge b-ok">Fulfilled</span></td><td><button class="btn btn-gray btn-sm" onclick="toast('info','📋 Viewing','Opening fulfilled request details')">View</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Verify Donors Subpage -->
+      <div class="hospital-subpage" id="hospital-verify" style="display:none">
+        <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:1.25rem">
+          <div class="card">
+            <div class="card-title">Audit Donor Passport ID</div>
+            <div class="form-group">
+              <label class="form-label">Digital Passport ID</label>
+              <div style="display:flex;gap:8px">
+                <input class="form-input" id="verify-passport-id-input" placeholder="e.g. LL-2026-CBE-0842" value="LL-2026-CBE-0842">
+                <button class="btn btn-red" onclick="verifyDonorPassport()">Verify ID</button>
+              </div>
+            </div>
+            <div id="verify-result-card" style="display:none;background:var(--gr3);padding:1rem;border-radius:var(--r2);margin-top:1rem">
+              <!-- Dynamic verify details injected here -->
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Recent Clinical Verifications</div>
+            <table class="tbl" style="font-size:12px">
+              <thead><tr><th>Passport ID</th><th>Donor Name</th><th>Clinical Vitals</th><th>State</th></tr></thead>
+              <tbody>
+                <tr><td>LL-2026-CBE-0842</td><td>Arjun Kumar</td><td>Vitals Normal</td><td><span class="badge b-ok">Verified</span></td></tr>
+                <tr><td>LL-2026-CBE-1092</td><td>Priya Sundaram</td><td>Vitals Normal</td><td><span class="badge b-ok">Verified</span></td></tr>
+                <tr><td>LL-2026-CBE-1542</td><td>Rahul Menon</td><td>Vitals Normal</td><td><span class="badge b-ok">Verified</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reports Subpage -->
+      <div class="hospital-subpage" id="hospital-reports" style="display:none">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1.25rem">
+          <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;height:180px">
+            <div>
+              <strong style="font-weight:700;display:block">Monthly Inventory Audit</strong>
+              <p style="font-size:12px;color:var(--gr);margin-top:4px">Summary of active draws, waste percentage, and bank transfers for the current month.</p>
+            </div>
+            <button class="btn btn-gray btn-sm btn-full" onclick="toast('info','📊 Exporting...','Monthly inventory audit pdf started.')">📥 Download PDF Report</button>
+          </div>
+          <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;height:180px">
+            <div>
+              <strong style="font-weight:700;display:block">Patient Escalation History</strong>
+              <p style="font-size:12px;color:var(--gr);margin-top:4px">Logs of all critical appeals, emergency response times, and fulfilling donors.</p>
+            </div>
+            <button class="btn btn-gray btn-sm btn-full" onclick="toast('info','📊 Exporting...','Escalation history excel sheet download started.')">📥 Export Excel Log</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===================== BLOOD BANK PORTAL ===================== -->
+<div class="page" id="bloodbank">
+  <div class="dash-layout">
+    <div class="sidebar">
+      <div class="sb-title">Blood Bank</div>
+      <div class="si active" onclick="bloodbankNav(this, 'overview')"><span>🏠</span> Dashboard</div>
+      <div class="si" onclick="bloodbankNav(this, 'inventory')"><span>📦</span> Inventory</div>
+      <div class="si" onclick="bloodbankNav(this, 'transfers')"><span>📤</span> Transfers</div>
+      <div class="si" onclick="bloodbankNav(this, 'expiry')"><span>⏰</span> Expiry Tracker</div>
+      <div class="si" onclick="bloodbankNav(this, 'analytics')"><span>📊</span> Analytics</div>
+      <div class="si" onclick="bloodbankNav(this, 'alerts')"><span>🔔</span> Alerts</div>
+    </div>
+    <div class="dash-main">
+      <div class="dash-header">
+        <div><div class="dash-title">City Blood Bank — Coimbatore</div><div class="dash-sub">Inventory & expiry management</div></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline" onclick="openProfileRequestModal('u3')">✏️ Edit Profile</button>
+          <button class="btn btn-gray" onclick="exportReport()">Export Report</button>
+          <button class="btn btn-red" onclick="bloodbankNav(document.querySelector('.si[onclick*=\"inventory\"]'), 'inventory')">+ Adjust Stock</button>
+        </div>
+      </div>
+      
+      <!-- Overview Subpage -->
+      <div class="bloodbank-subpage active" id="bloodbank-overview">
+        <div class="mrow">
+          <div class="mc"><div class="mc-lbl">Total Units</div><div class="mc-val">487</div><div class="mc-ch up">↑ +23 today</div></div>
+          <div class="mc"><div class="mc-lbl">Expiring Soon</div><div class="mc-val">34</div><div class="mc-ch dn">⚠ Within 7 days</div></div>
+          <div class="mc"><div class="mc-lbl">Transfers Today</div><div class="mc-val">12</div><div class="mc-ch up">↑ 8 out, 4 in</div></div>
+          <div class="mc"><div class="mc-lbl">Shortage Alerts</div><div class="mc-val">3</div><div class="mc-ch dn">A-, O-, AB-</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+          <div class="card">
+            <div class="card-title">Live Stock Levels by Type</div>
+            <div id="bb-stock-levels-list">
+              <!-- Dynamically populated from JS bloodbank telemetry -->
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Portal Integration Status</div>
+            <p style="font-size:13px;color:var(--gr);line-height:1.6">City Blood Bank repository is synced with local hospitals. Select sidebar items to view live transfer logs, record drawings, or broadcast stock warnings.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inventory Subpage -->
+      <div class="bloodbank-subpage" id="bloodbank-inventory" style="display:none">
+        <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:1.25rem">
+          <div class="card">
+            <div class="card-title">Detailed Stock Inventory Balance</div>
+            <div id="bb-stock-levels-list-inventory">
+              <!-- Injected dynamically from JS -->
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Adjust Inventory Stock</div>
+            <div class="form-group">
+              <label class="form-label">Blood Group</label>
+              <select class="form-input" id="bb-stock-group-select">
+                <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+                <option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Quantity Adjust (Units)</label>
+              <input type="number" class="form-input" id="bb-stock-count-input" placeholder="e.g. 10 or -5" value="10">
+            </div>
+            <button class="btn btn-red btn-full" onclick="updateBloodBankStock()">Update Stock Balance</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transfers Subpage -->
+      <div class="bloodbank-subpage" id="bloodbank-transfers" style="display:none">
+        <div class="card" style="margin-bottom:1.25rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <div class="card-title" style="margin:0">Active & Recent Transfers</div>
+            <button class="btn btn-red btn-sm" onclick="requestTransfer()">Request External Transfer</button>
+          </div>
+          <table class="tbl">
+            <thead><tr><th>Type</th><th>Units</th><th>Facility</th><th>Direction</th><th>Time</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="bb-transfers-tbody">
+              <!-- Injected dynamically from JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Expiry Tracker Subpage -->
+      <div class="bloodbank-subpage" id="bloodbank-expiry" style="display:none">
+        <div class="card">
+          <div class="card-title">⏰ Expiry Tracker (Next 10 Days)</div>
+          <table class="tbl">
+            <thead><tr><th>Type</th><th>Units</th><th>Expires</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td style="font-weight:800;color:var(--red)">A+</td><td>8</td><td>July 4</td><td><span class="badge b-crit">2 days</span></td></tr>
+              <tr><td style="font-weight:800;color:var(--red)">B+</td><td>5</td><td>July 6</td><td><span class="badge b-urg">4 days</span></td></tr>
+              <tr><td style="font-weight:800;color:var(--red)">O+</td><td>12</td><td>July 8</td><td><span class="badge b-urg">6 days</span></td></tr>
+              <tr><td style="font-weight:800;color:var(--red)">AB+</td><td>3</td><td>July 11</td><td><span class="badge b-ok">9 days</span></td></tr>
+            </tbody>
+          </table>
+          <button class="btn btn-outline btn-full" style="margin-top:1.5rem" onclick="broadcastExpiry()">📢 Broadcast Expiry Alert</button>
+        </div>
+      </div>
+
+      <!-- Analytics Subpage -->
+      <div class="bloodbank-subpage" id="bloodbank-analytics" style="display:none">
+        <div class="mrow">
+          <div class="mc"><div class="mc-lbl">Average Stock Retention</div><div class="mc-val">18 Days</div></div>
+          <div class="mc"><div class="mc-lbl">Waste / Discard rate</div><div class="mc-val">0.4%</div></div>
+        </div>
+        <div class="card" style="margin-top:1.25rem">
+          <div class="card-title">Peak Supply Channels</div>
+          <p style="font-size:13px;color:var(--gr)">Our mobile donation camps account for <strong>68%</strong> of drawing volume. Walks-in direct donations make up <strong>32%</strong>.</p>
+        </div>
+      </div>
+
+      <!-- Alerts Subpage -->
+      <div class="bloodbank-subpage" id="bloodbank-alerts" style="display:none">
+        <div class="card" style="max-width:550px">
+          <div class="card-title">Compose Shortage Warnings</div>
+          <div class="form-group">
+            <label class="form-label">Warning Category</label>
+            <select class="form-input" id="bb-alert-type">
+              <option>🚨 Critical Stock Level Warning</option>
+              <option>📢 Voluntary Appeal Campaign</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Message SMS Content</label>
+            <textarea class="form-input" id="bb-alert-msg" placeholder="Emergency appeal: O- blood stocks are critically low. Eligible donors please visit Coimbatore City Blood Bank today!" style="height:100px;resize:none"></textarea>
+          </div>
+          <button class="btn btn-red btn-full" onclick="toast('success','🚀 Broadcast Sent','Shortage alert sent to all registered O- and A- donors in the area.')">Send SMS Alert Broadcast</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CAMPS PAGE ===================== -->
+<div class="page" id="camps">
+  <div class="section-sm">
+    <div class="dash-header">
+      <div><div class="dash-title">Donation Camps & Drives</div><div class="dash-sub">Find and register for blood donation camps near you</div></div>
+      <button class="btn btn-red" onclick="toast('success','🏕 Camp Form Opened','Fill in your camp details to organize a drive')">+ Organize a Camp</button>
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap">
+      <select class="form-input" style="max-width:160px"><option>All Cities</option><option>Coimbatore</option><option>Chennai</option><option>Bangalore</option></select>
+      <select class="form-input" style="max-width:160px"><option>This Week</option><option>This Month</option><option>Next 3 Months</option></select>
+      <button class="btn btn-red" onclick="filterCampsList()">Search</button>
+    </div>
+    <!-- Dynamic Camps List -->
+    <div id="camps-list-container" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1.25rem;margin-bottom:2rem">
+      <!-- Injected dynamically from JS -->
+    </div>
+    <!-- Appointment booking -->
+    <div style="font-size:1.1rem;font-weight:800;margin-bottom:1rem">📅 Book a Donation Appointment</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+      <div class="card">
+        <div class="card-title">Select Date — July 2026</div>
+        <div class="cal-grid">
+          <div class="cal-day">Su</div><div class="cal-day">Mo</div><div class="cal-day">Tu</div><div class="cal-day">We</div><div class="cal-day">Th</div><div class="cal-day">Fr</div><div class="cal-day">Sa</div>
+          <div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell empty"></div><div class="cal-cell avail" onclick="selectDate(this,'1')">1</div><div class="cal-cell today" onclick="selectDate(this,'2')">2</div><div class="cal-cell avail" onclick="selectDate(this,'3')">3</div><div class="cal-cell avail" onclick="selectDate(this,'4')">4</div>
+          <div class="cal-cell avail" onclick="selectDate(this,'5')">5</div><div class="cal-cell avail" onclick="selectDate(this,'6')">6</div><div class="cal-cell booked">7</div><div class="cal-cell booked">8</div><div class="cal-cell avail" onclick="selectDate(this,'9')">9</div><div class="cal-cell avail" onclick="selectDate(this,'10')">10</div><div class="cal-cell avail" onclick="selectDate(this,'11')">11</div>
+          <div class="cal-cell booked">12</div><div class="cal-cell avail" onclick="selectDate(this,'13')">13</div><div class="cal-cell avail" onclick="selectDate(this,'14')">14</div><div class="cal-cell avail" onclick="selectDate(this,'15')">15</div><div class="cal-cell avail" onclick="selectDate(this,'16')">16</div><div class="cal-cell booked">17</div><div class="cal-cell avail" onclick="selectDate(this,'18')">18</div>
+          <div class="cal-cell avail" onclick="selectDate(this,'19')">19</div><div class="cal-cell avail" onclick="selectDate(this,'20')">20</div><div class="cal-cell avail" onclick="selectDate(this,'21')">21</div><div class="cal-cell booked">22</div><div class="cal-cell avail" onclick="selectDate(this,'23')">23</div><div class="cal-cell avail" onclick="selectDate(this,'24')">24</div><div class="cal-cell avail" onclick="selectDate(this,'25')">25</div>
+        </div>
+        <div style="display:flex;gap:8px;font-size:11px">
+          <div style="display:flex;align-items:center;gap:4px"><div style="width:12px;height:12px;border-radius:3px;background:#d1fae5"></div>Available</div>
+          <div style="display:flex;align-items:center;gap:4px"><div style="width:12px;height:12px;border-radius:3px;background:#fee2e2"></div>Booked</div>
+          <div style="display:flex;align-items:center;gap:4px"><div style="width:12px;height:12px;border-radius:3px;background:var(--red)"></div>Today</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" id="slot-title">Select a date to see time slots</div>
+        <div class="slot-grid">
+          <div class="slot taken">9:00 AM</div><div class="slot taken">9:30 AM</div><div class="slot" onclick="selectSlot(this)">10:00 AM</div>
+          <div class="slot" onclick="selectSlot(this)">10:30 AM</div><div class="slot taken">11:00 AM</div><div class="slot" onclick="selectSlot(this)">11:30 AM</div>
+          <div class="slot" onclick="selectSlot(this)">2:00 PM</div><div class="slot" onclick="selectSlot(this)">2:30 PM</div><div class="slot taken">3:00 PM</div>
+          <div class="slot" onclick="selectSlot(this)">3:30 PM</div><div class="slot" onclick="selectSlot(this)">4:00 PM</div><div class="slot taken">4:30 PM</div>
+        </div>
+        <button class="btn btn-red btn-full" style="margin-top:1rem" onclick="bookAppointment()">✅ Confirm Appointment</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== LEADERBOARD ===================== -->
+<div class="page" id="leaderboard">
+  <div class="section-sm" style="max-width:700px">
+    <div class="dash-title" style="margin-bottom:.4rem">🏆 Donor Leaderboard</div>
+    <div class="dash-sub" style="margin-bottom:1.5rem">Top donors ranked by XP, donations & emergency responses</div>
+    
+    <!-- Dynamic Podium (Top 3) -->
+    <div id="leaderboard-podium" style="display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:10px;margin-bottom:1.75rem;align-items:flex-end">
+      <!-- Injected dynamically from JS -->
+    </div>
+    
+    <div class="card">
+      <div class="card-title" style="margin-bottom: 1.25rem">All Rankings</div>
+      <div id="leaderboard-tbody" style="display:flex;flex-direction:column">
+        <!-- Injected dynamically from JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== NOTIFICATIONS ===================== -->
+<div class="page" id="notifications">
+  <div class="section-sm" style="max-width:680px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem">
+      <div><div class="dash-title">🔔 Notification Center</div><div class="dash-sub">Real-time alerts, reminders & updates</div></div>
+      <button class="btn btn-gray" onclick="markAllRead()">Mark All Read</button>
+    </div>
+    <div class="card">
+      <div class="notif-item"><div class="ni-icon ni-e">🚨</div><div class="ni-body"><div class="ni-title">Critical: A- blood needed urgently</div><div class="ni-text">City General Hospital needs 3 units of A- immediately. Patient is in ICU. You are 2.1 km away and eligible.</div><div class="ni-time">2 minutes ago</div><button class="btn btn-red btn-sm" style="margin-top:8px" onclick="respondEmergency('A-','City General Hospital')">Respond Now</button></div><div class="ni-dot"></div></div>
+      <div class="notif-item"><div class="ni-icon ni-s">✅</div><div class="ni-body"><div class="ni-title">You're eligible to donate today!</div><div class="ni-text">90 days have passed since your last donation on Feb 24, 2026. Book an appointment or respond to emergencies.</div><div class="ni-time">1 hour ago</div><button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="showPage('camps')">Book Appointment</button></div><div class="ni-dot"></div></div>
+      <div class="notif-item"><div class="ni-icon ni-i">🧠</div><div class="ni-body"><div class="ni-title">AI found a match for your blood group</div><div class="ni-text">A patient at Apollo Hospital matches your blood group O+. Responding earns you the Emergency Hero badge.</div><div class="ni-time">3 hours ago</div></div><div class="ni-dot"></div></div>
+      <div class="notif-item"><div class="ni-icon ni-w">📅</div><div class="ni-body"><div class="ni-title">Upcoming camp reminder</div><div class="ni-text">You're registered for World Blood Donor Day Camp on July 14 at City Hall, Coimbatore. Slot: 10:00 AM.</div><div class="ni-time">Yesterday</div></div></div>
+      <div class="notif-item"><div class="ni-icon ni-s">🏆</div><div class="ni-body"><div class="ni-title">Badge unlocked: Emergency Hero!</div><div class="ni-text">You responded to 3 emergency blood requests this month. You've earned the Emergency Hero badge and +500 XP.</div><div class="ni-time">2 days ago</div></div></div>
+      <div class="notif-item"><div class="ni-icon ni-i">📢</div><div class="ni-body"><div class="ni-title">New donation camp near you</div><div class="ni-text">PSG College is organizing a donation drive on July 20. 112 slots still available. Register now!</div><div class="ni-time">3 days ago</div><button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="registerCamp('PSG College Youth Drive')">Register</button></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== BLOOD PASSPORT ===================== -->
+<div class="page" id="passport">
+  <div class="section-sm" style="max-width:600px">
+    <div class="dash-title" style="margin-bottom:.4rem">🪪 Digital Blood Passport</div>
+    <div class="dash-sub" style="margin-bottom:1.5rem">Your verified donor identity — shareable via QR code at any hospital or camp</div>
+    <div class="passport">
+      <div class="pp-bg">🩸</div>
+      <div class="pp-hdr">
+        <div class="pp-av">AK</div>
+        <div>
+          <div class="pp-name">Arjun Kumar</div>
+          <div class="pp-id">Donor ID: LL-2024-CBE-08421</div>
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+            <span style="background:rgba(231,76,60,.3);color:#fca5a5;font-size:10px;padding:3px 10px;border-radius:12px;font-weight:700">✅ Verified Donor</span>
+            <span style="background:rgba(16,185,129,.2);color:#6ee7b7;font-size:10px;padding:3px 10px;border-radius:12px;font-weight:700">Elite Level 12</span>
+          </div>
+        </div>
+      </div>
+      <div class="pp-grid">
+        <div class="pp-field"><div class="pp-lbl">Blood Type</div><div class="pp-val big">O+</div></div>
+        <div class="pp-field"><div class="pp-lbl">Total Donations</div><div class="pp-val big">12</div></div>
+        <div class="pp-field"><div class="pp-lbl">Lives Saved</div><div class="pp-val big">36</div></div>
+        <div class="pp-field"><div class="pp-lbl">Last Donated</div><div class="pp-val" style="font-size:.85rem">Feb 24, 2026</div></div>
+        <div class="pp-field"><div class="pp-lbl">Next Eligible</div><div class="pp-val" style="font-size:.85rem;color:#6ee7b7">Today ✓</div></div>
+        <div class="pp-field"><div class="pp-lbl">XP Points</div><div class="pp-val" style="font-size:.85rem;color:#fbbf24">5,840</div></div>
+      </div>
+      <div class="qr-area">
+        <div class="qr-box" id="qr-box"></div>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#e2e8f0;margin-bottom:3px">Scan to verify donor</div>
+          <div style="font-size:11px;color:#64748b;line-height:1.5">Show this at donation camps or hospitals for instant identity verification</div>
+          <button class="btn" style="background:rgba(255,255,255,.12);color:#e2e8f0;border:1px solid rgba(255,255,255,.15);font-size:11px;padding:5px 14px;margin-top:8px" onclick="sharePassport()">📲 Share Passport</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:1.25rem">
+      <div class="card-title">Donation History</div>
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Date</th><th>Hospital</th><th>Type</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td style="font-weight:700">12</td><td>Feb 24, 2026</td><td>Apollo Hospital</td><td style="font-weight:800;color:var(--red)">O+</td><td><span class="badge b-ok">Completed</span></td></tr>
+          <tr><td style="font-weight:700">11</td><td>Nov 25, 2025</td><td>City General</td><td style="font-weight:800;color:var(--red)">O+</td><td><span class="badge b-ok">Completed</span></td></tr>
+          <tr><td style="font-weight:700">10</td><td>Aug 26, 2025</td><td>KMCH Medical</td><td style="font-weight:800;color:var(--red)">O+</td><td><span class="badge b-ok">Completed</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== AUTH / SIGN UP ===================== -->
+<div class="page" id="auth">
+  <div class="auth-wrap">
+    <div class="auth-left">
+      <div style="font-size:2rem;font-weight:900;color:#f87171;margin-bottom:1rem">🩸 LifeLink</div>
+      <div style="font-size:1.3rem;font-weight:700;text-align:center;margin-bottom:.75rem;max-width:300px">Join 85,000+ heroes saving lives every day</div>
+      <div style="font-size:13px;color:#94a3b8;text-align:center;max-width:280px;line-height:1.7;margin-bottom:2rem">Create your account to respond to emergencies, book appointments, and earn rewards for every donation.</div>
+      <div style="display:flex;flex-direction:column;gap:14px;width:100%;max-width:280px">
+        <div style="display:flex;align-items:center;gap:10px;color:#94a3b8;font-size:13px"><span style="width:26px;height:26px;background:rgba(231,76,60,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#f87171;flex-shrink:0">1</span>Create your profile in 2 minutes</div>
+        <div style="display:flex;align-items:center;gap:10px;color:#94a3b8;font-size:13px"><span style="width:26px;height:26px;background:rgba(231,76,60,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#f87171;flex-shrink:0">2</span>Get AI-matched to emergencies near you</div>
+        <div style="display:flex;align-items:center;gap:10px;color:#94a3b8;font-size:13px"><span style="width:26px;height:26px;background:rgba(231,76,60,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#f87171;flex-shrink:0">3</span>Earn badges, XP, and save lives</div>
+      </div>
+    </div>
+    <div class="auth-right">
+      <div class="auth-box">
+        <div class="auth-tabs" style="display:flex;border-bottom:1.5px solid var(--gr4);margin-bottom:1.5rem">
+          <div class="auth-tab active" onclick="switchAuthTab('register')" style="flex:1;text-align:center;padding:.75rem;font-weight:700;cursor:pointer;border-bottom:3px solid var(--red);color:var(--tx)">Register</div>
+          <div class="auth-tab" onclick="switchAuthTab('signin')" style="flex:1;text-align:center;padding:.75rem;font-weight:700;cursor:pointer;color:var(--gr)">Sign In</div>
+        </div>
+
+        <!-- REGISTER FORM -->
+        <div id="auth-register-form">
+          <div class="auth-title">Create your account</div>
+          <div class="auth-sub">Choose your role to get started</div>
+          <div class="role-grid">
+            <div class="role-card sel" onclick="selectRole(this)"><div class="role-icon">💉</div><div class="role-name">Donor</div></div>
+            <div class="role-card" onclick="selectRole(this)"><div class="role-icon">🧑‍⚕️</div><div class="role-name">Patient / Family</div></div>
+            <div class="role-card" onclick="selectRole(this)"><div class="role-icon">🏥</div><div class="role-name">Hospital</div></div>
+            <div class="role-card" onclick="selectRole(this)"><div class="role-icon">🩸</div><div class="role-name">Blood Bank</div></div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group"><label class="form-label" id="signup-fname-label">First Name</label><input class="form-input" id="signup-fname" placeholder="Arjun"></div>
+            <div class="form-group" id="signup-lname-container"><label class="form-label" id="signup-lname-label">Last Name</label><input class="form-input" id="signup-lname" placeholder="Kumar"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Email Address</label><input class="form-input" id="signup-email" type="email" placeholder="arjun@email.com"></div>
+          <div class="form-group"><label class="form-label">Phone Number (for OTP)</label><input class="form-input" id="signup-phone" type="tel" placeholder="+91 98765 43210"></div>
+          <div class="form-grid-2">
+            <div class="form-group" id="signup-blood-container"><label class="form-label">Blood Group</label><select class="form-input" id="signup-blood"><option value="">Select</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option></select></div>
+            <div class="form-group"><label class="form-label">City</label><input class="form-input" id="signup-city" placeholder="Coimbatore"></div>
+          </div>
+          <div class="form-group" id="signup-license-container" style="display:none">
+            <label class="form-label">Medical License Number / Reg ID</label>
+            <input class="form-input" id="signup-license" placeholder="e.g. HOSP-2026-CBE-9842">
+          </div>
+          <div class="form-group" id="signup-doc-container" style="display:none">
+            <label class="form-label">Accreditation Certificate (PDF/Image)</label>
+            <div style="position:relative;border:2px dashed var(--gr3);padding:1rem;border-radius:var(--r);text-align:center;background:var(--gr4);cursor:pointer" onclick="document.getElementById('signup-file-input').click()">
+              <span style="font-size:1.5rem">📤</span>
+              <div style="font-size:12px;color:var(--gr);font-weight:600;margin-top:6px" id="signup-file-label">Click to upload license certificate (PDF/JPG)</div>
+              <input type="file" id="signup-file-input" style="display:none" onchange="handleSignupFileChange(this)">
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Password</label><input class="form-input" type="password" id="signup-password" placeholder="Min. 8 characters"></div>
+          <button class="btn btn-red btn-full btn-lg" style="margin-top:.5rem" onclick="submitSignup()">Create Account — Get OTP →</button>
+          <div class="divider">or continue with</div>
+          <button class="btn btn-gray btn-full" onclick="toast('info','🔐 Google Sign-In','Google authentication coming soon!')">🔵 Continue with Google</button>
+          <div style="text-align:center;margin-top:1rem;font-size:13px;color:var(--gr)">Already have an account? <a onclick="switchAuthTab('signin')" style="color:var(--red);font-weight:600;cursor:pointer">Sign In</a></div>
+        </div>
+
+        <!-- SIGN IN FORM -->
+        <div id="auth-signin-form" style="display: none;">
+          <div class="auth-title">Welcome back</div>
+          <div class="auth-sub">Enter your account credentials to access your dashboard</div>
+          
+          <div class="form-group">
+            <label class="form-label">Name or Email</label>
+            <input class="form-input" id="signin-name" placeholder="e.g. Arjun Kumar or arjun@email.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <input class="form-input" id="signin-password" type="password" placeholder="••••••••">
+          </div>
+          
+          <button class="btn btn-red btn-full btn-lg" style="margin-top:1rem" onclick="submitSignin()">Sign In</button>
+          <div class="divider">or continue with</div>
+          <button class="btn btn-gray btn-full" onclick="toast('info','🔐 Google Sign-In','Google authentication coming soon!')">🔵 Continue with Google</button>
+          <div style="text-align:center;margin-top:1.5rem;font-size:13px;color:var(--gr)">Don't have an account? <a onclick="switchAuthTab('register')" style="color:var(--red);font-weight:600;cursor:pointer">Register</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="js/app.js"></script>
+</body>
+</html>
